@@ -1,0 +1,44 @@
+{
+	"packages" : {
+		"com.vrchat.base" : {
+			"versions" : {
+				"3.2.1" : {
+					"name" : "com.vrchat.base",
+					"displayName" : "VRChat SDK - Base",
+					"version" : "3.2.1",
+					"unity" : "2019.4",
+					"description" : "Base for VRChat SDK",
+					"dependencies" : null
+				}
+			}
+		},
+		"com.vrchat.worlds" : {
+			"versions" : {
+				"3.2.1" : {
+					"name" : "com.vrchat.worlds",
+					"displayName" : "VRChat SDK - Worlds",
+					"version" : "3.2.1",
+					"unity" : "2019.4",
+					"description" : "Udon and Beyond",
+					"dependencies" : {
+						"com.unity.cinemachine" : "2.6.3",
+						"com.unity.postprocessing" : "2.3.0",
+						"com.unity.textmeshpro" : "1.4.1"
+					}
+				}
+			}
+		},
+		"com.vrchat.avatars" : {
+			"versions" : {
+				"3.2.1" : {
+					"name" : "com.vrchat.avatars",
+					"displayName" : "VRChat SDK - Avatars",
+					"version" : "3.2.1",
+					"unity" : "2019.4",
+					"description" : "Our powerful Avatars 3.0 System",
+					"dependencies" : null
+				}
+			}
+		}
+	}
+}
