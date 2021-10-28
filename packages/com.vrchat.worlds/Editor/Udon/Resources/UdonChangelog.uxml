@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<engine:UXML
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:engine="UnityEngine.Experimental.UIElements"
+    xsi:noNamespaceSchemaLocation="../UIElementsSchema/UIElements.xsd"
+    xsi:schemaLocation="UnityEngine.Experimental.UIElements ../UIElementsSchema/UnityEngine.Experimental.UIElements.xsd">
+
+    <engine:ScrollView stretch-content-width="true">
+        <engine:VisualElement name="section">
+          <engine:Label text="New Features" name="header" />
+          <engine:TextElement text="OnVariableChange Events" />
+          <engine:TextElement text="Dropdowns for Nodes that interact with other UdonBehaviours like SetProgramVariable, GetProgramVariable, SendCustomEvent, etc." />
+          <engine:TextElement text="Build &amp; Reload for faster iteration" />
+        </engine:VisualElement>
+
+        <engine:VisualElement name="section">
+          <engine:Label text="Coming Soon" name="header" />
+          <engine:TextElement text="Macro Programs" />
+        </engine:VisualElement>
+
+        <engine:VisualElement name="section">
+          <engine:Label text="Known Issues" name="header" />
+          <engine:TextElement text="Copy/Paste does not work for Group and Comment elements" />
+          <engine:TextElement text="Variables created by dragging from hierarchy are not populated until next compile" />
+        </engine:VisualElement>
+    </engine:ScrollView>
+
+</engine:UXML>
