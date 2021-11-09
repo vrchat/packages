@@ -5,13 +5,97 @@ using VRC.SDK3.Avatars.Components;
 using static VRC.SDKBase.VRC_AvatarParameterDriver;
 using Boo.Lang;
 using System;
+using UnityEditorInternal;
+using AnimatorControllerParameterType = UnityEngine.AnimatorControllerParameterType;
 
 [CustomEditor(typeof(VRCAvatarParameterDriver))]
 public class AvatarParameterDriverEditor : Editor
 {
+	VRCAvatarParameterDriver driver;
 	string[] parameterNames;
 	AnimatorControllerParameterType[] parameterTypes;
-	int selectedParam = -1;
+	private ReorderableList list;
+
+	public ReorderableList List
+	{
+		get
+		{
+			if (list == null)
+			{
+				list = new ReorderableList(serializedObject, serializedObject.FindProperty("parameters"));
+				list.drawElementCallback += DrawElementCallback;
+				//list.onAddCallback += delegate (ReorderableList reorderableList) { reorderableList.list.Add(new Parameter() { name = parameterNames.Length > 0 ? parameterNames[0] : "" }); };
+				list.elementHeightCallback += ElementHeightCallback;
+				list.headerHeight = 1;
+			}
+			return list;
+		}
+	}
+
+	private float ElementHeightCallback(int index)
+	{
+		float height = EditorGUIUtility.singleLineHeight * 1.25f; // type
+
+		Rect dummyRect = new Rect(0, 0, 0, 0);
+		var parameters = serializedObject.FindProperty("parameters");
+		Parameter parameter = driver.parameters[index];
+        switch (parameter.type)
+        {
+            case ChangeType.Set:
+				height += EditorGUIUtility.singleLineHeight * 1.25f; // name
+				if (DrawParamaterDropdown(parameters.GetArrayElementAtIndex(index).FindPropertyRelative("name"), "", ref dummyRect, false) < 0) {
+					HelpBoxHeight(ref height);
+				}
+				height += EditorGUIUtility.singleLineHeight * 1.25f; // value
+				break;
+            case ChangeType.Add:
+				height += EditorGUIUtility.singleLineHeight * 1.25f; // name
+				if (DrawParamaterDropdown(parameters.GetArrayElementAtIndex(index).FindPropertyRelative("name"), "", ref dummyRect, false) < 0) {
+					HelpBoxHeight(ref height);
+				}
+				height += EditorGUIUtility.singleLineHeight * 1.25f; // value
+				break;
+            case ChangeType.Random:
+				height += EditorGUIUtility.singleLineHeight * 1.25f; // name
+				if (DrawParamaterDropdown(parameters.GetArrayElementAtIndex(index).FindPropertyRelative("name"), "", ref dummyRect, false) < 0) {
+					HelpBoxHeight(ref height);
+				}
+				height += EditorGUIUtility.singleLineHeight * 1.25f; // value
+				if (parameterTypes[IndexOf(parameterNames, parameter.name)] == AnimatorControllerParameterType.Int || parameterTypes[IndexOf(parameterNames, parameter.name)] == AnimatorControllerParameterType.Float) {
+					height += EditorGUIUtility.singleLineHeight * 1.25f; // value 2
+				}
+				break;
+            case ChangeType.Copy:
+				height += EditorGUIUtility.singleLineHeight * 1.25f; // source
+				if (DrawParamaterDropdown(parameters.GetArrayElementAtIndex(index).FindPropertyRelative("source"), "", ref dummyRect, false) < 0) {
+					HelpBoxHeight(ref height);
+				}
+				height += EditorGUIUtility.singleLineHeight * 1.25f; // destination
+				if (DrawParamaterDropdown(parameters.GetArrayElementAtIndex(index).FindPropertyRelative("name"), "", ref dummyRect, false) < 0) {
+					HelpBoxHeight(ref height);
+				}
+				var sourceValueType = IndexOf(parameterNames, parameter.source) >= 0 ? parameterTypes[IndexOf(parameterNames, parameter.source)] : AnimatorControllerParameterType.Float;
+				var destValueType = IndexOf(parameterNames, parameter.name) >= 0 ? parameterTypes[IndexOf(parameterNames, parameter.name)] : AnimatorControllerParameterType.Float;
+				if (sourceValueType != destValueType || sourceValueType == AnimatorControllerParameterType.Trigger) {
+					HelpBoxHeight(ref height);
+				}
+				height += EditorGUIUtility.singleLineHeight * 1.25f; // convert range checkbox
+				if (parameter.convertRange)
+				{
+					height += EditorGUIUtility.singleLineHeight * 1.25f; // source range
+					height += EditorGUIUtility.singleLineHeight * 1.25f; // destination range
+				}
+				break;
+            default:
+                break;
+        }
+		void HelpBoxHeight(ref float height1)
+        {
+			height1 += EditorGUIUtility.singleLineHeight * 1.25f * 2; // help box when parameter is empty (no parameters are present in animator)
+		}
+
+		return height;
+	}
 
 	public void OnEnable()
 	{
@@ -19,6 +103,8 @@ public class AvatarParameterDriverEditor : Editor
 	}
 	void UpdateParameters()
 	{
+		driver = target as VRCAvatarParameterDriver;
+
 		//Build parameter names
 		var controller = GetCurrentController();
 		if(controller != null)
@@ -34,6 +120,17 @@ public class AvatarParameterDriverEditor : Editor
 			parameterNames = names.ToArray();
 			parameterTypes = types.ToArray();
 		}
+	}
+
+	private void DrawElementCallback(Rect rect, int i, bool isactive, bool isfocused)
+	{
+		var param = driver.parameters[i];
+		var index = IndexOf(parameterNames, param.name);
+		rect.height = EditorGUIUtility.singleLineHeight;
+
+		DrawParameter(serializedObject.FindProperty("parameters"), i, rect);
+
+		
 	}
 
 	static UnityEditor.Animations.AnimatorController GetCurrentController()
@@ -55,7 +152,7 @@ public class AvatarParameterDriverEditor : Editor
 	{
 		EditorGUI.BeginChangeCheck();
 		serializedObject.Update();
-		var driver = target as VRCAvatarParameterDriver;
+		driver = target as VRCAvatarParameterDriver;
 
 		//Update parameters
 		if(parameterNames == null)
@@ -79,11 +176,7 @@ public class AvatarParameterDriverEditor : Editor
 			EditorGUILayout.HelpBox("Using Add & Random may not produce the same result when run on remote instance of the avatar.  When using these modes it's suggested you use a synced parameter and use the local only option.", MessageType.Warning);
 
 		//Parameters
-		var editable = new InspectorUtil.EditableArray();
-		editable.array = serializedObject.FindProperty("parameters");
-		editable.maxElements = int.MaxValue;
-		editable.onDrawElement = DrawParameter;
-		InspectorUtil.DrawEditableArray(this, editable, ref selectedParam);
+		List.DoLayoutList();
 
 		//End
 		serializedObject.ApplyModifiedProperties();
@@ -91,7 +184,7 @@ public class AvatarParameterDriverEditor : Editor
 			EditorUtility.SetDirty(this);
 	}
 
-	void DrawParameter(SerializedProperty parameters, int arrayIndex)
+	void DrawParameter(SerializedProperty parameters, int arrayIndex, Rect rect)
 	{
 		var param = parameters.GetArrayElementAtIndex(arrayIndex);
 		var name = param.FindPropertyRelative("name");
@@ -103,9 +196,11 @@ public class AvatarParameterDriverEditor : Editor
 		var chance = param.FindPropertyRelative("chance");
 
 		//Change type
-		EditorGUILayout.PropertyField(changeType);
+		EditorGUI.PropertyField(rect, changeType);
+		rect.y += EditorGUIUtility.singleLineHeight * 1.25f;
+		Rect _rect = new Rect(rect);
 
-		switch((ChangeType)changeType.enumValueIndex)
+		switch ((ChangeType)changeType.enumValueIndex)
 		{
 			case ChangeType.Set:
 			{
@@ -131,23 +226,26 @@ public class AvatarParameterDriverEditor : Editor
 
 		void DrawSet()
 		{
-			var destIndex = DrawParamaterDropdown(name, "Destination");
+			var destIndex = DrawParamaterDropdown(name, "Destination", ref _rect);
+			rect = _rect;
 			var valueType = destIndex >= 0 ? parameterTypes[destIndex] : AnimatorControllerParameterType.Float;
-			switch(valueType)
+			rect.y += EditorGUIUtility.singleLineHeight * 1.25f;
+			_rect = new Rect(rect);
+			switch (valueType)
 			{
 				case AnimatorControllerParameterType.Bool:
 				{
-					value.floatValue = EditorGUILayout.Toggle("Value", value.floatValue != 0f) ? 1f : 0f;
+					value.floatValue = EditorGUI.Toggle(_rect, "Value", value.floatValue != 0f) ? 1f : 0f;
 					break;
 				}
 				case AnimatorControllerParameterType.Int:
 				{
-					value.floatValue = EditorGUILayout.IntField("Value", (int)value.floatValue);
+					value.floatValue = EditorGUI.IntField(_rect, "Value", (int)value.floatValue);
 					break;
 				}
 				case AnimatorControllerParameterType.Float:
 				{
-					value.floatValue = EditorGUILayout.FloatField("Value", value.floatValue);
+					value.floatValue = EditorGUI.FloatField(_rect, "Value", value.floatValue);
 					break;
 				}
 				case AnimatorControllerParameterType.Trigger:
@@ -156,65 +254,83 @@ public class AvatarParameterDriverEditor : Editor
 				}
 				default:
 				{
-					EditorGUILayout.HelpBox($"{valueType} parameters don't support the {changeType.enumNames[changeType.enumValueIndex]} type", MessageType.Warning);
+					rect.y += EditorGUIUtility.singleLineHeight * 1.25f;
+					_rect = new Rect(rect.x - 30, rect.y, rect.width + 30, rect.height * 2);
+					EditorGUI.HelpBox(_rect, $"{valueType} parameters don't support the {changeType.enumNames[changeType.enumValueIndex]} type", MessageType.Warning);
 					break;
 				}
 			}
 		}
 		void DrawAdd()
 		{
-			var destIndex = DrawParamaterDropdown(name, "Destination");
+			var destIndex = DrawParamaterDropdown(name, "Destination", ref _rect);
+			rect = _rect;
 			var valueType = destIndex >= 0 ? parameterTypes[destIndex] : AnimatorControllerParameterType.Float;
-			switch(valueType)
+			rect.y += EditorGUIUtility.singleLineHeight * 1.25f;
+			_rect = new Rect(rect);
+			switch (valueType)
 			{
 				case AnimatorControllerParameterType.Int:
 				{
-					value.floatValue = EditorGUILayout.IntField("Value", (int)value.floatValue);
+					value.floatValue = EditorGUI.IntField(_rect, "Value", (int)value.floatValue);
 					break;
 				}
 				case AnimatorControllerParameterType.Float:
 				{
-					value.floatValue = EditorGUILayout.FloatField("Value", value.floatValue);
+					value.floatValue = EditorGUI.FloatField(_rect, "Value", value.floatValue);
 					break;
 				}
 				default:
 				{
-					EditorGUILayout.HelpBox($"{valueType} parameters don't support the {changeType.enumNames[changeType.enumValueIndex]} type", MessageType.Warning);
+					rect.y += EditorGUIUtility.singleLineHeight * 1.25f;
+					_rect = new Rect(rect.x, rect.y, rect.width, rect.height * 2);
+					EditorGUI.HelpBox(_rect, $"{valueType} parameters don't support the {changeType.enumNames[changeType.enumValueIndex]} type", MessageType.Warning);
 					break;
 				}
 			}
 		}
 		void DrawRandom()
 		{
-			var destIndex = DrawParamaterDropdown(name, "Destination");
+			var destIndex = DrawParamaterDropdown(name, "Destination", ref _rect);
+			rect = _rect;
 			var valueType = destIndex >= 0 ? parameterTypes[destIndex] : AnimatorControllerParameterType.Float;
-			switch(valueType)
+			rect.y += EditorGUIUtility.singleLineHeight * 1.25f;
+			_rect = new Rect(rect);
+			switch (valueType)
 			{
 				case AnimatorControllerParameterType.Bool:
 				case AnimatorControllerParameterType.Trigger:
 				{
-					EditorGUILayout.PropertyField(chance);
+					EditorGUI.PropertyField(_rect, chance);
 					break;
 				}
 				case AnimatorControllerParameterType.Int:
 				{
-					minValue.floatValue = EditorGUILayout.IntField("Min Value", (int)minValue.floatValue);
-					maxValue.floatValue = EditorGUILayout.IntField("Max Value", (int)maxValue.floatValue);
+					minValue.floatValue = EditorGUI.IntField(_rect, "Min Value", (int)minValue.floatValue);
+					rect.y += EditorGUIUtility.singleLineHeight * 1.25f;
+					_rect = new Rect(rect);
+					maxValue.floatValue = EditorGUI.IntField(_rect, "Max Value", (int)maxValue.floatValue);
 					break;
 				}
 				case AnimatorControllerParameterType.Float:
 				{
-					minValue.floatValue = EditorGUILayout.FloatField("Min Value", minValue.floatValue);
-					maxValue.floatValue = EditorGUILayout.FloatField("Max Value", maxValue.floatValue);
+					minValue.floatValue = EditorGUI.FloatField(_rect, "Min Value", minValue.floatValue);
+					rect.y += EditorGUIUtility.singleLineHeight * 1.25f;
+					_rect = new Rect(rect);
+					maxValue.floatValue = EditorGUI.FloatField(_rect, "Max Value", maxValue.floatValue);
 					break;
 				}
 			}
 		}
 		void DrawCopy()
 		{
-			var sourceIndex = DrawParamaterDropdown(source, "Source");
+			var sourceIndex = DrawParamaterDropdown(source, "Source", ref _rect);
+			rect = _rect;
 			var sourceValueType = sourceIndex >= 0 ? parameterTypes[sourceIndex] : AnimatorControllerParameterType.Float;
-			var destIndex = DrawParamaterDropdown(name, "Destination");
+			rect.y += EditorGUIUtility.singleLineHeight * 1.25f;
+			_rect = new Rect(rect);
+			var destIndex = DrawParamaterDropdown(name, "Destination", ref _rect);
+			rect = _rect;
 			var destValueType = destIndex >= 0 ? parameterTypes[destIndex] : AnimatorControllerParameterType.Float;
 			switch(destValueType)
 			{
@@ -226,35 +342,54 @@ public class AvatarParameterDriverEditor : Editor
 					{
 						if(sourceValueType == AnimatorControllerParameterType.Trigger)
 						{
-							EditorGUILayout.HelpBox("Source parameter can't be the Trigger type", MessageType.Warning);
+							rect.y += EditorGUIUtility.singleLineHeight * 1.25f;
+							_rect = new Rect(rect.x, rect.y, rect.width, rect.height * 2);
+							rect.y += EditorGUIUtility.singleLineHeight * 1.25f;
+							EditorGUI.HelpBox(_rect, "Source parameter can't be the Trigger type", MessageType.Warning);
 						}
 						else if(sourceValueType != destValueType)
 						{
-							EditorGUILayout.HelpBox($"Value will be converted from a {sourceValueType} to a {destValueType}.", MessageType.Info);
+							rect.y += EditorGUIUtility.singleLineHeight * 1.25f;
+							_rect = new Rect(rect.x, rect.y, rect.width, rect.height * 2);
+							rect.y += EditorGUIUtility.singleLineHeight * 1.25f;
+							EditorGUI.HelpBox(_rect, $"Value will be converted from a {sourceValueType} to a {destValueType}.", MessageType.Info);
 						}
 					}
 
+					rect.y += EditorGUIUtility.singleLineHeight * 1.25f;
+					_rect = new Rect(rect);
 					var convertRange = param.FindPropertyRelative("convertRange");
-					EditorGUILayout.PropertyField(convertRange);
+					EditorGUI.PropertyField(_rect, convertRange);
 					if(convertRange.boolValue)
 					{
-						EditorGUI.indentLevel += 1;
-						DrawRange("Source", "sourceMin", "sourceMax");
-						DrawRange("Destination", "destMin", "destMax");
-						EditorGUI.indentLevel -= 1;
+						rect.x += 10;
+						rect.width -= 10;
+						rect.y += EditorGUIUtility.singleLineHeight * 1.25f;
+						_rect = new Rect(rect);
+						DrawRange("Source", "sourceMin", "sourceMax", _rect);
+						rect.y += EditorGUIUtility.singleLineHeight * 1.25f;
+						_rect = new Rect(rect);
+						DrawRange("Destination", "destMin", "destMax", _rect);
 
-						void DrawRange(string label, string min, string max)
+						void DrawRange(string label, string min, string max, Rect _rect1)
 						{
 							var minVal = param.FindPropertyRelative(min);
 							var maxVal = param.FindPropertyRelative(max);
 
-							EditorGUILayout.BeginHorizontal();
-							EditorGUILayout.PrefixLabel(label);
-							EditorGUILayout.LabelField("Min", GUILayout.Width(64));
-							minVal.floatValue = EditorGUILayout.FloatField(minVal.floatValue);
-							EditorGUILayout.LabelField("Max", GUILayout.Width(64));
-							maxVal.floatValue = EditorGUILayout.FloatField(maxVal.floatValue);
-							EditorGUILayout.EndHorizontal();
+							EditorGUI.PrefixLabel(_rect1, new GUIContent(label));
+							_rect1.x += (_rect1.width / 2) -10;
+							_rect1.width = _rect1.width / 8;
+							_rect = new Rect(_rect1);
+							EditorGUI.LabelField(_rect1, "Min");
+							_rect1.x += _rect1.width;
+							_rect = new Rect(_rect1);
+							minVal.floatValue = EditorGUI.FloatField(_rect1, minVal.floatValue);
+							_rect1.x += _rect1.width + 10;
+							_rect = new Rect(_rect1);
+							EditorGUI.LabelField(_rect1, "Max");
+							_rect1.x += _rect1.width;
+							_rect = new Rect(_rect1);
+							maxVal.floatValue = EditorGUI.FloatField(_rect1, maxVal.floatValue);
 						}
 					}
 
@@ -262,34 +397,59 @@ public class AvatarParameterDriverEditor : Editor
 				}
 				default:
 				{
-					EditorGUILayout.HelpBox($"{destValueType} parameters don't support the {changeType.enumNames[changeType.enumValueIndex]} type", MessageType.Warning);
+					rect.y += EditorGUIUtility.singleLineHeight * 1.25f;
+					_rect = new Rect(rect.x, rect.y, rect.width, rect.height * 2);
+					rect.y += EditorGUIUtility.singleLineHeight * 1.25f;
+					EditorGUI.HelpBox(_rect, $"{destValueType} parameters don't support the {changeType.enumNames[changeType.enumValueIndex]} type", MessageType.Warning);
 					break;
 				}
 			}
 		}
 	}
-	int DrawParamaterDropdown(SerializedProperty name, string label)
+	int DrawParamaterDropdown(SerializedProperty name, string label, ref Rect rect, bool drawUI = true)
 	{
 		//Name
-		EditorGUILayout.BeginHorizontal();
-		EditorGUILayout.PrefixLabel(label);
+		Rect _rect = new Rect(rect.x, rect.y, rect.width - 100, rect.height);
+		EditorGUI.PrefixLabel(_rect, new GUIContent(label));
 		var index = -1;
-		if(parameterNames != null)
+		if (parameterNames != null)
 		{
 			//Find index
 			EditorGUI.BeginChangeCheck();
 			index = Array.IndexOf(parameterNames, name.stringValue);
-			index = EditorGUILayout.Popup(index, parameterNames);
-			if(EditorGUI.EndChangeCheck() && index >= 0)
+			if (drawUI) {
+				_rect = new Rect(200, rect.y, rect.width - 300, rect.height);
+				index = EditorGUI.Popup(_rect, index, parameterNames);
+			}
+			if (EditorGUI.EndChangeCheck() && index >= 0)
 				name.stringValue = parameterNames[index];
 		}
-		name.stringValue = EditorGUILayout.TextField(name.stringValue);
-		EditorGUILayout.EndHorizontal();
+		if (drawUI) {
+			_rect = new Rect(rect.width - 90, rect.y, 130, rect.height);
+			name.stringValue = EditorGUI.TextField(_rect, name.stringValue);
+		}
 
-		if(index < 0)
-			EditorGUILayout.HelpBox($"Parameter '{name.stringValue}' not found. Make sure you defined in the Animator window's Parameters tab.", MessageType.Warning);
+		if (index < 0) {
+			rect.y += EditorGUIUtility.singleLineHeight * 1.25f;
+			_rect = new Rect(rect.x, rect.y, rect.width, rect.height * 2);
+			rect.y += EditorGUIUtility.singleLineHeight * 1.25f;
+			EditorGUI.HelpBox(_rect, $"Parameter '{name.stringValue}' not found. Make sure you defined in the Animator window's Parameters tab.", MessageType.Warning);
+		}
 
 		return index;
 	}
+
+	private int IndexOf(string[] array, string value)
+	{
+		if (array == null)
+			return -1;
+		for (int i = 0; i < array.Length; i++)
+		{
+			if (array[i] == value)
+				return i;
+		}
+		return -1;
+	}
 }
 #endif
+
