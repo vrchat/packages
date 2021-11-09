@@ -1,149 +1,147 @@
-﻿using UnityEngine;
+using System;
+using System.Collections.Generic;
+using UnityEngine;
 using UnityEditor;
+using UnityEditorInternal;
+using AnimatorController = UnityEditor.Animations.AnimatorController;
+using AnimatorControllerParameter = UnityEngine.AnimatorControllerParameter;
+using AnimatorControllerParameterType = UnityEngine.AnimatorControllerParameterType;
 using ExpressionParameters = VRC.SDK3.Avatars.ScriptableObjects.VRCExpressionParameters;
 using ExpressionParameter = VRC.SDK3.Avatars.ScriptableObjects.VRCExpressionParameters.Parameter;
-using UnityEngine.UI;
 
-[CustomEditor(typeof(VRC.SDK3.Avatars.ScriptableObjects.VRCExpressionParameters))]
-public class VRCExpressionParametersEditor : Editor
+[CustomEditor(typeof(ExpressionParameters))]
+public class VRCExpressionParametersEditor : UnityEditor.Editor
 {
-	int selected = -1;
-	GUIStyle boxNormal;
-	GUIStyle boxSelected;
+    private const int ParamCountLabelWidth = 20;
+    private const int TypeWidth = 60;
+	private const int DefaultWidth = 50;
+	private const int SavedWidth = 50;
+    private const int SyncedWidth = 45;
 
-	void InitStyles()
-	{
-		//Normal
-		if(boxNormal == null)
-			boxNormal = new GUIStyle(GUI.skin.box);
+    private AnimatorController controllerToTransfer;
+	
+	private ReorderableList list;
 
-		//Selected
-		if(boxSelected == null)
-		{
-			boxSelected = new GUIStyle(GUI.skin.box);
-			boxSelected.normal.background = MakeStyleBackground(new Color(0.0f, 0.5f, 1f, 0.5f));
-		}
-	}
-	Texture2D MakeStyleBackground(Color color)
-	{
-		var texture = new Texture2D(1, 1);
-		texture.SetPixel(0, 0, color);
-		texture.Apply();
-		return texture;
-	}
+    public enum Column {
+        OverallParamCount,
+        Type,
+        ParameterName,
+        Default,
+        Saved,
+        Synced
+    }
 
-	void SelectParam(int value)
-	{
-		selected = value;
-		Repaint();
-	}
-	public void OnEnable()
+	private Rect GetColumnSection(Column column, Rect rect, bool isHeader = false, bool isToggle = false) {
+		int _paramCountLabelWidth = isHeader ? ParamCountLabelWidth : 0;
+
+		Rect _rect = new Rect(rect);
+		_rect.height = EditorGUIUtility.singleLineHeight;
+
+        switch (column) {
+            case Column.OverallParamCount:
+                _rect.width = _paramCountLabelWidth;
+                _rect.x = rect.x;
+                break;
+            case Column.Type:
+                _rect.width = TypeWidth;
+                _rect.x = rect.x + _paramCountLabelWidth;
+                break;
+            case Column.ParameterName:
+                _rect.width = rect.width - (DefaultWidth + SavedWidth + SyncedWidth + TypeWidth);
+                _rect.x = rect.x + _paramCountLabelWidth + TypeWidth;
+                break;
+            case Column.Default:
+                _rect.width = DefaultWidth;
+                _rect.x = rect.x + rect.width - (DefaultWidth + SyncedWidth + SavedWidth) + (isToggle ? _rect.width / 2 - 4 : 0);
+                if (isToggle) _rect.width = EditorGUIUtility.singleLineHeight;
+                break;
+            case Column.Saved:
+                _rect.width = SavedWidth;
+                _rect.x = rect.x + rect.width - (SyncedWidth + SavedWidth) + (isToggle ? _rect.width / 2 - 4 : 0);
+                if (isToggle) _rect.width = EditorGUIUtility.singleLineHeight;
+                break;
+            case Column.Synced:
+                _rect.width = SyncedWidth;
+                _rect.x = rect.x + rect.width - SyncedWidth + (isToggle ? _rect.width / 2 - 4 : 0);
+				if (isToggle) _rect.width = EditorGUIUtility.singleLineHeight;
+                break;
+        }
+		return _rect;
+    }
+
+    public void OnEnable()
 	{
 		//Init parameters
-		var expressionParameters = target as ExpressionParameters;
-		if (expressionParameters.parameters == null)
+		var customExpressionParams = target as ExpressionParameters;
+		if (customExpressionParams.parameters == null)
 			InitExpressionParameters(true);
-
-		SelectParam(-1);
+		 
+		// initialize ReorderableList
+		list = new ReorderableList(serializedObject, serializedObject.FindProperty("parameters"), 
+		                           true, true, true, true);
+		list.drawElementCallback = OnDrawElement;
+		list.drawHeaderCallback = OnDrawHeader;
 	}
+		
+	private void OnDrawHeader(Rect rect) {
+        // the default size of the rect is bs, need to shift it to the left and make it wider to fit the entire space
+        rect.x -= 5;
+        rect.width += 5;
+
+        var centeredStyle = new GUIStyle(GUI.skin.GetStyle("Label")) {
+            alignment = TextAnchor.UpperCenter
+        };
+
+        EditorGUI.LabelField(GetColumnSection(Column.OverallParamCount, rect, true), $"{list.count}");
+		EditorGUI.LabelField(GetColumnSection(Column.Type, rect, true), "Type", centeredStyle);
+		EditorGUI.LabelField(GetColumnSection(Column.ParameterName, rect, true), "Name", centeredStyle);
+		EditorGUI.LabelField(GetColumnSection(Column.Default, rect, true), "Default", centeredStyle);
+		EditorGUI.LabelField(GetColumnSection(Column.Saved, rect, true), "Saved", centeredStyle);
+        EditorGUI.LabelField(GetColumnSection(Column.Synced, rect, true), "Synced", centeredStyle);
+
+    }
+		
+	private void OnDrawElement(Rect rect, int index, bool isActive, bool isFocused) {
+		var element = list.serializedProperty.GetArrayElementAtIndex(index);
+
+        EditorGUI.PropertyField(GetColumnSection(Column.Type, rect), element.FindPropertyRelative("valueType"), GUIContent.none);
+
+        EditorGUI.PropertyField(GetColumnSection(Column.ParameterName, rect), element.FindPropertyRelative("name"), GUIContent.none );
+
+		SerializedProperty defaultValue = element.FindPropertyRelative("defaultValue");
+		var type = (ExpressionParameters.ValueType)element.FindPropertyRelative("valueType").intValue;
+		switch(type)
+		{
+			case ExpressionParameters.ValueType.Int:
+				defaultValue.floatValue = Mathf.Clamp(EditorGUI.IntField(GetColumnSection(Column.Default, rect), (int)defaultValue.floatValue), 0, 255);
+				break;
+			case ExpressionParameters.ValueType.Float:
+				defaultValue.floatValue = Mathf.Clamp(EditorGUI.FloatField(GetColumnSection(Column.Default, rect), defaultValue.floatValue), -1f, 1f);
+				break;
+			case ExpressionParameters.ValueType.Bool:
+				defaultValue.floatValue = EditorGUI.Toggle(GetColumnSection(Column.Default, rect, false, true), defaultValue.floatValue != 0 ? true : false) ? 1f : 0f;
+				break;
+		}
+		EditorGUI.PropertyField(GetColumnSection(Column.Saved, rect, false, true), element.FindPropertyRelative("saved"), GUIContent.none);
+
+        EditorGUI.PropertyField(GetColumnSection(Column.Synced, rect, false, true), element.FindPropertyRelative("networkSynced"), GUIContent.none);
+    }
+
 	public override void OnInspectorGUI()
 	{
-		InitStyles();
-
 		serializedObject.Update();
 		{
-			EditorGUILayout.LabelField("Parameters");
-			var parameters = serializedObject.FindProperty("parameters");
-
-			//Controls
-			EditorGUILayout.BeginHorizontal();
-			{
-				//Add
-				if (GUILayout.Button("Add"))
-					parameters.arraySize = parameters.arraySize + 1;
-
-				EditorGUI.BeginDisabledGroup(selected < 0);
-				{
-					//Move Up
-					if (GUILayout.Button("Up"))
-					{
-						if(selected > 0)
-						{
-							SwapParams(selected, selected - 1);
-							selected = selected - 1;
-							Repaint();
-						}
-					}
-
-					//Move Down
-					if (GUILayout.Button("Down"))
-					{
-						if (selected < parameters.arraySize-1)
-						{
-							SwapParams(selected, selected + 1);
-							selected = selected + 1;
-							Repaint();
-						}
-					}
-
-					void SwapParams(int indexA, int indexB)
-					{
-						var script = (ExpressionParameters)target;
-						var itemA = script.parameters[indexA];
-						var itemB = script.parameters[indexB];
-						script.parameters[indexA] = itemB;
-						script.parameters[indexB] = itemA;
-
-						serializedObject.Update();
-					}
-
-					//Delete
-					if (GUILayout.Button("Delete"))
-					{
-						parameters.DeleteArrayElementAtIndex(selected);
-						SelectParam(-1);
-					}
-				}
-				EditorGUI.EndDisabledGroup();
-			}
-			EditorGUILayout.EndHorizontal();
+			serializedObject.Update();
+			list.DoLayoutList();
+			serializedObject.ApplyModifiedProperties();
 			
-			//Labels
-			EditorGUILayout.BeginHorizontal();
-			{
-				EditorGUILayout.LabelField("    Name", GUILayout.MinWidth(100));
-				EditorGUILayout.LabelField("    Type", GUILayout.Width(100));
-				EditorGUILayout.LabelField("Default", GUILayout.Width(64));
-				EditorGUILayout.LabelField("Saved", GUILayout.Width(64));
-				EditorGUILayout.LabelField("Synced", GUILayout.Width(64));
-			}
-			EditorGUILayout.EndHorizontal();
-
-			//Parameters
-			int count = parameters.arraySize;
-			for(int paramIter=0; paramIter< parameters.arraySize; paramIter++)
-			{
-				DrawExpressionParameter(parameters, paramIter);
-					
-				/*var item = parameters.GetArrayElementAtIndex(paramIter);
-				var name = item.FindPropertyRelative("name");
-				var valueType = item.FindPropertyRelative("valueType");
-
-				//Draw
-				EditorGUI.indentLevel += 1;
-				EditorGUILayout.BeginHorizontal();
-				{
-					EditorGUILayout.PropertyField(name, new GUIContent(""));
-					EditorGUILayout.PropertyField(valueType, new GUIContent(""));
-					if(GUILayout.Button("X", GUILayout.Width(32)))
-					{
-						parameters.DeleteArrayElementAtIndex(paramIter);
-						paramIter -= 1;
-					}
-				}
-				EditorGUILayout.EndHorizontal();
-				EditorGUI.indentLevel -= 1;*/
-			}
+			//Draw parameters
+			var parameters = serializedObject.FindProperty("parameters");
+			
+			// old school draw parameters without ReorderableList
+			/*for (int i = 0; i < ExpressionParameters.MAX_PARAMETERS; i++)
+				DrawExpressionParameter(parameters, i);
+			*/
 
 			//Cost
 			int cost = (target as ExpressionParameters).CalcTotalCost();
@@ -174,55 +172,74 @@ public class VRCExpressionParametersEditor : Editor
 			}
 		}
 		serializedObject.ApplyModifiedProperties();
-	}
-	void DrawExpressionParameter(SerializedProperty parameters, int index)
-	{
-		if (parameters.arraySize < index + 1)
-			parameters.InsertArrayElementAtIndex(index);
-		var item = parameters.GetArrayElementAtIndex(index);
+    }
 
-		var name = item.FindPropertyRelative("name");
-		var valueType = item.FindPropertyRelative("valueType");
-		var defaultValue = item.FindPropertyRelative("defaultValue");
-		var saved = item.FindPropertyRelative("saved");
-		var synced = item.FindPropertyRelative("networkSynced");
+    private string FindAnimatorParameterMatch() {
+        var expressionParameters = target as ExpressionParameters;
+        List<AnimatorControllerParameter> controllerParamsList = new List<AnimatorControllerParameter>(controllerToTransfer.parameters);
+        List<string> matchingParameters = new List<string>();
 
-		bool isSelected = selected == index;
+        foreach (var parameter in expressionParameters.parameters) {
+            bool parameterExists = false;
+            //AnimatorControllerParameter foundControllerParameter = null;
+            foreach (var controllerParameter in controllerToTransfer.parameters) {
+                if (controllerParameter.name == parameter.name) {
+                    parameterExists = true;
+                    //foundControllerParameter = controllerParameter;
+                    break;
+                }
+            }
 
-		EditorGUI.indentLevel += 1;
-		var rect = EditorGUILayout.BeginHorizontal(isSelected ? boxSelected : boxNormal);
-		{
-			EditorGUILayout.PropertyField(name, new GUIContent(""), GUILayout.MinWidth(100));
-			EditorGUILayout.PropertyField(valueType, new GUIContent(""), GUILayout.Width(100));
-			var type = (ExpressionParameters.ValueType)valueType.intValue;
-			switch(type)
-			{
-				case ExpressionParameters.ValueType.Int:
-					defaultValue.floatValue = Mathf.Clamp(EditorGUILayout.IntField((int)defaultValue.floatValue, GUILayout.Width(64)), 0, 255);
-					break;
-				case ExpressionParameters.ValueType.Float:
-					defaultValue.floatValue = Mathf.Clamp(EditorGUILayout.FloatField(defaultValue.floatValue, GUILayout.Width(64)), -1f, 1f);
-					break;
-				case ExpressionParameters.ValueType.Bool:
-					defaultValue.floatValue = EditorGUILayout.Toggle(defaultValue.floatValue != 0 ? true : false, GUILayout.Width(64)) ? 1f : 0f;
-					break;
-			}
-			EditorGUILayout.PropertyField(saved, new GUIContent(""), GUILayout.Width(64));
-			EditorGUILayout.PropertyField(synced, new GUIContent(""), GUILayout.Width(64));
-		}
-		EditorGUILayout.EndHorizontal();
-		EditorGUI.indentLevel -= 1;
+            if (!parameterExists) {
+                matchingParameters.Add(parameter.name);
+            }
+        }
 
-		//Select
-		if(Event.current.type == EventType.MouseDown)
-		{
-			if(rect.Contains(Event.current.mousePosition))
-			{
-				SelectParam(index);
-				Event.current.Use();
-			}
-		}
-	}
+        return string.Join(", ", matchingParameters);
+    }
+
+    private void TransferToAnimatorController() {
+        var expressionParameters = target as ExpressionParameters;
+        List<AnimatorControllerParameter> controllerParamsList = new List<AnimatorControllerParameter>(controllerToTransfer.parameters);
+
+        foreach (var parameter in expressionParameters.parameters) {
+            bool parameterExists = false;
+            //AnimatorControllerParameter foundControllerParameter = null;
+            foreach (var controllerParameter in controllerToTransfer.parameters) {
+                if (controllerParameter.name == parameter.name) {
+                    parameterExists = true;
+                    //foundControllerParameter = controllerParameter;
+                    break;
+                }
+            }
+
+            if (!parameterExists) {
+                controllerParamsList.Add(new AnimatorControllerParameter() {
+                    name = parameter.name,
+                    defaultBool = parameter.defaultValue > 0.5,
+                    defaultFloat = parameter.defaultValue,
+                    defaultInt = (int)Math.Floor(parameter.defaultValue),
+                    type = VRCType2UnityType(parameter.valueType)
+                });
+            }
+        }
+
+        controllerToTransfer.parameters = controllerParamsList.ToArray();
+    }
+
+    private AnimatorControllerParameterType VRCType2UnityType(ExpressionParameters.ValueType type) {
+        switch (type) {
+            case ExpressionParameters.ValueType.Int:
+                return AnimatorControllerParameterType.Int;
+            case ExpressionParameters.ValueType.Float:
+                return AnimatorControllerParameterType.Float;
+            case ExpressionParameters.ValueType.Bool:
+                return AnimatorControllerParameterType.Bool;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(type), type, null);
+        }
+    }
+
 	void InitExpressionParameters(bool populateWithDefault)
 	{
 		var expressionParameters = target as ExpressionParameters;
