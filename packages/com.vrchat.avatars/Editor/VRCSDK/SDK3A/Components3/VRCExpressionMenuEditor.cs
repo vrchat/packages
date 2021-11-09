@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
@@ -7,6 +8,7 @@ using ExpressionControl = VRC.SDK3.Avatars.ScriptableObjects.VRCExpressionsMenu.
 using ExpressionParameters = VRC.SDK3.Avatars.ScriptableObjects.VRCExpressionParameters;
 using VRC.SDK3.Avatars.ScriptableObjects;
 using System.Reflection.Emit;
+using UnityEditorInternal;
 
 [CustomEditor(typeof(VRC.SDK3.Avatars.ScriptableObjects.VRCExpressionsMenu))]
 public class VRCExpressionsMenuEditor : Editor
@@ -14,10 +16,129 @@ public class VRCExpressionsMenuEditor : Editor
 	static string[] ToggleStyles = { "Pip-Slot", "Animation" };
 
 	List<UnityEngine.Object> foldoutList = new List<UnityEngine.Object>();
-	public void Start()
-	{
 
+	private ReorderableList list;
+
+	private SerializedProperty controls;
+	
+	public void Start() {
 	}
+
+	private void OnEnable() {
+		controls = serializedObject.FindProperty("controls");
+		
+		list = new ReorderableList(serializedObject, controls);
+		list.drawElementCallback += DrawElementCallback;
+		list.drawHeaderCallback = DrawHeaderCallback;
+		list.onAddCallback = ONAddCallback;
+		list.onRemoveCallback = ONRemoveCallback;
+		list.elementHeightCallback = ElementHeightCallback;
+		
+		if (controls.arraySize >= ExpressionsMenu.MAX_CONTROLS) {
+			list.displayAdd = false;
+		}
+	}
+
+	private float ElementHeightCallback(int index) {
+		var entity = controls.GetArrayElementAtIndex(index);
+		
+		
+		var name = entity.FindPropertyRelative("name");
+		var icon = entity.FindPropertyRelative("icon");
+		var type = entity.FindPropertyRelative("type");
+		var parameter = entity.FindPropertyRelative("parameter");
+		var value = entity.FindPropertyRelative("value");
+		var subMenu = entity.FindPropertyRelative("subMenu");
+
+		var subParameters = entity.FindPropertyRelative("subParameters");
+		var labels = entity.FindPropertyRelative("labels");
+
+		float height = EditorGUIUtility.singleLineHeight * 1.25f; // Foldout & Name
+			
+		if (entity.isExpanded) {
+			height += EditorGUIUtility.singleLineHeight * 1.25f; // Icon
+			height += EditorGUIUtility.singleLineHeight * 1.25f; // Type
+			height += EditorGUIUtility.singleLineHeight * 3f; // Type Help box
+			height += EditorGUIUtility.singleLineHeight * 1.25f; // Parameter
+
+			string paramName = parameter.FindPropertyRelative("name").stringValue;
+			if (!string.IsNullOrEmpty(paramName)) {
+				var paramDef = FindExpressionParameterDef(paramName);
+				if (paramDef != null) {
+					if (paramDef.valueType == ExpressionParameters.ValueType.Int) {
+						height += EditorGUIUtility.singleLineHeight * 1.25f; // Value
+					} else if (paramDef.valueType == ExpressionParameters.ValueType.Float) {
+						height += EditorGUIUtility.singleLineHeight * 1.25f; // Value
+					}
+				} else {
+					height += EditorGUIUtility.singleLineHeight * 1.25f; // Value
+					height += EditorGUIUtility.singleLineHeight * 2.5f; // Warning Box
+				}
+			}
+
+			var controlType = (ExpressionControl.ControlType)type.intValue;
+			switch (controlType) {
+				case VRCExpressionsMenu.Control.ControlType.Button:
+					break;
+				case VRCExpressionsMenu.Control.ControlType.Toggle:
+					break;
+				case VRCExpressionsMenu.Control.ControlType.SubMenu:
+					height += EditorGUIUtility.singleLineHeight * 1.25f; // Seperator Slider
+
+					height += EditorGUIUtility.singleLineHeight * 1.25f; // Sub Menu Object Field
+					break;
+				case VRCExpressionsMenu.Control.ControlType.TwoAxisPuppet:
+					height += EditorGUIUtility.singleLineHeight * 1.25f; // Seperator Slider
+
+					height += EditorGUIUtility.singleLineHeight * (1.25f) * 2; // Parameters
+					height += EditorGUIUtility.singleLineHeight * (1.25f * 3) * 4; // Labels
+					break;
+				case VRCExpressionsMenu.Control.ControlType.FourAxisPuppet:
+					height += EditorGUIUtility.singleLineHeight * 1.25f; // Seperator Slider
+
+					height += EditorGUIUtility.singleLineHeight * (1.25f) * 4; // Parameters
+					height += EditorGUIUtility.singleLineHeight * (1.25f * 3) * 4; // Labels
+					break;
+				case VRCExpressionsMenu.Control.ControlType.RadialPuppet:
+					height += EditorGUIUtility.singleLineHeight * 1.25f; // Seperator Slider
+
+					height += EditorGUIUtility.singleLineHeight * (1.25f); // Parameters
+					break;
+				default:
+					throw new ArgumentOutOfRangeException();
+			}
+		}
+
+		return height;
+	}
+
+	private void ONRemoveCallback(ReorderableList reorderableList) {
+		controls.DeleteArrayElementAtIndex(reorderableList.index);
+		if (controls.arraySize < ExpressionsMenu.MAX_CONTROLS && controls.arraySize > 0) {
+			list.displayAdd = true;
+		}
+	}
+
+	private void ONAddCallback(ReorderableList reorderableList) {
+		var menu = serializedObject.targetObject as ExpressionsMenu;
+
+		var control = new ExpressionControl();
+		control.name = "New Control";
+		menu.controls.Add(control);
+		if (controls.arraySize >= ExpressionsMenu.MAX_CONTROLS -1) {
+			list.displayAdd = false;
+		}
+	}
+
+	private void DrawHeaderCallback(Rect rect) {
+		EditorGUI.LabelField(rect, $"Controls ({controls.arraySize})");
+	}
+
+	private void DrawElementCallback(Rect rect, int index, bool isactive, bool isfocused) {
+		var control = controls.GetArrayElementAtIndex(index);
+		DrawControl(rect, controls, control as SerializedProperty, index);
+	}
+
 	public void OnDisable()
 	{
 		SelectAvatarDescriptor(null);
@@ -36,119 +157,87 @@ public class VRCExpressionsMenuEditor : Editor
 
 		//Controls
 		EditorGUI.BeginDisabledGroup(activeDescriptor == null);
-		EditorGUILayout.LabelField("Controls");
-		EditorGUI.indentLevel += 1;
-		{
-			var controls = serializedObject.FindProperty("controls");
-			for (int i = 0; i < controls.arraySize; i++)
-			{
-				var control = controls.GetArrayElementAtIndex(i);
-				DrawControl(controls, control as SerializedProperty, i);
-			}
-
-			//Add
-			EditorGUI.BeginDisabledGroup(controls.arraySize >= ExpressionsMenu.MAX_CONTROLS);
-			if (GUILayout.Button("Add Control"))
-			{
-				var menu = serializedObject.targetObject as ExpressionsMenu;
-
-				var control = new ExpressionControl();
-				control.name = "New Control";
-				menu.controls.Add(control);
-			}
-			EditorGUI.EndDisabledGroup();
-		}
-		EditorGUI.indentLevel -= 1;
+		list.DoLayoutList();
 		EditorGUI.EndDisabledGroup();
 
 		serializedObject.ApplyModifiedProperties();
 	}
-	void DrawControl(SerializedProperty controls, SerializedProperty control, int index)
+	void DrawControl(Rect rect, SerializedProperty control, SerializedProperty entity, int index)
 	{
-		var name = control.FindPropertyRelative("name");
-		var icon = control.FindPropertyRelative("icon");
-		var type = control.FindPropertyRelative("type");
-		var parameter = control.FindPropertyRelative("parameter");
-		var value = control.FindPropertyRelative("value");
-		var subMenu = control.FindPropertyRelative("subMenu");
+		var name = entity.FindPropertyRelative("name");
+		var icon = entity.FindPropertyRelative("icon");
+		var type = entity.FindPropertyRelative("type");
+		var parameter = entity.FindPropertyRelative("parameter");
+		var value = entity.FindPropertyRelative("value");
+		var subMenu = entity.FindPropertyRelative("subMenu");
 
-		var subParameters = control.FindPropertyRelative("subParameters");
-		var labels = control.FindPropertyRelative("labels");
+		var subParameters = entity.FindPropertyRelative("subParameters");
+		var labels = entity.FindPropertyRelative("labels");
 
 		//Foldout
 		EditorGUI.BeginChangeCheck();
-		control.isExpanded = EditorGUILayout.Foldout(control.isExpanded, name.stringValue);
-		if (!control.isExpanded)
+			
+		rect.y += 2;
+		Rect _rect = new Rect(rect.x + 10, rect.y, rect.width/2 - 30, EditorGUIUtility.singleLineHeight);
+
+		entity.isExpanded = EditorGUI.Foldout(_rect, entity.isExpanded, "", true);
+
+		_rect = new Rect(rect.x + 10, rect.y, rect.width - 10, EditorGUIUtility.singleLineHeight);
+		EditorGUI.PropertyField(_rect, name);
+		rect.y += EditorGUIUtility.singleLineHeight * 1.25f;
+
+		if (!entity.isExpanded)
 			return;
 
-		//Box
-		GUILayout.BeginVertical(GUI.skin.box);
 		{
-			//Up, Down, Delete
-			GUILayout.BeginHorizontal();
-			GUILayout.FlexibleSpace();
-			if (GUILayout.Button("Up", GUILayout.Width(64)))
-			{
-				if (index > 0)
-					controls.MoveArrayElement(index, index - 1);
-			}
-			if (GUILayout.Button("Down", GUILayout.Width(64)))
-			{
-				if (index < controls.arraySize - 1)
-					controls.MoveArrayElement(index, index + 1);
-			}
-			if (GUILayout.Button("Delete", GUILayout.Width(64)))
-			{
-				controls.DeleteArrayElementAtIndex(index);
-				return;
-			}
-			GUILayout.EndHorizontal();
 
 			//Generic params
-			EditorGUI.indentLevel += 1;
 			{
-				EditorGUILayout.PropertyField(name);
-				EditorGUILayout.PropertyField(icon);
-				EditorGUILayout.PropertyField(type);
 
+				_rect = new Rect(rect.x, rect.y, rect.width, EditorGUIUtility.singleLineHeight);
+				EditorGUI.PropertyField(_rect, icon);
+				rect.y += EditorGUIUtility.singleLineHeight * 1.25f;
+
+				_rect = new Rect(rect.x, rect.y, rect.width, EditorGUIUtility.singleLineHeight);
+				EditorGUI.PropertyField(_rect, type);
+				rect.y += EditorGUIUtility.singleLineHeight * 1.25f;
+
+				_rect = new Rect(rect.x, rect.y, rect.width, EditorGUIUtility.singleLineHeight*2.5f);
 				//Type Info
 				var controlType = (ExpressionControl.ControlType)type.intValue;
 				switch (controlType)
 				{
-					case ExpressionControl.ControlType.Button:
-						EditorGUILayout.HelpBox("Click or hold to activate. The button remains active for a minimum 0.2s.\nWhile active the (Parameter) is set to (Value).\nWhen inactive the (Parameter) is reset to zero.", MessageType.Info);
+					case VRCExpressionsMenu.Control.ControlType.Button:
+						EditorGUI.HelpBox(_rect, "Click or hold to activate. The button remains active for a minimum 0.2s.\nWhile active the (Parameter) is set to (Value).\nWhen inactive the (Parameter) is reset to zero.", MessageType.Info);
 						break;
-					case ExpressionControl.ControlType.Toggle:
-						EditorGUILayout.HelpBox("Click to toggle on or off.\nWhen turned on the (Parameter) is set to (Value).\nWhen turned off the (Parameter) is reset to zero.", MessageType.Info);
+					case VRCExpressionsMenu.Control.ControlType.Toggle:
+						EditorGUI.HelpBox(_rect, "Click to toggle on or off.\nWhen turned on the (Parameter) is set to (Value).\nWhen turned off the (Parameter) is reset to zero.", MessageType.Info);
 						break;
-					case ExpressionControl.ControlType.SubMenu:
-						EditorGUILayout.HelpBox("Opens another expression menu.\nWhen opened the (Parameter) is set to (Value).\nWhen closed (Parameter) is reset to zero.", MessageType.Info);
+					case VRCExpressionsMenu.Control.ControlType.SubMenu:
+						EditorGUI.HelpBox(_rect, "Opens another expression menu.\nWhen opened the (Parameter) is set to (Value).\nWhen closed (Parameter) is reset to zero.", MessageType.Info);
 						break;
-					case ExpressionControl.ControlType.TwoAxisPuppet:
-						EditorGUILayout.HelpBox("Puppet menu that maps the joystick to two parameters (-1 to +1).\nWhen opened the (Parameter) is set to (Value).\nWhen closed (Parameter) is reset to zero.", MessageType.Info);
+					case VRCExpressionsMenu.Control.ControlType.TwoAxisPuppet:
+						EditorGUI.HelpBox(_rect, "Puppet menu that maps the joystick to two parameters (-1 to +1).\nWhen opened the (Parameter) is set to (Value).\nWhen closed (Parameter) is reset to zero.", MessageType.Info);
 						break;
-					case ExpressionControl.ControlType.FourAxisPuppet:
-						EditorGUILayout.HelpBox("Puppet menu that maps the joystick to four parameters (0 to 1).\nWhen opened the (Parameter) is set to (Value).\nWhen closed (Parameter) is reset to zero.", MessageType.Info);
+					case VRCExpressionsMenu.Control.ControlType.FourAxisPuppet:
+						EditorGUI.HelpBox(_rect, "Puppet menu that maps the joystick to four parameters (0 to 1).\nWhen opened the (Parameter) is set to (Value).\nWhen closed (Parameter) is reset to zero.", MessageType.Info);
 						break;
-					case ExpressionControl.ControlType.RadialPuppet:
-						EditorGUILayout.HelpBox("Puppet menu that sets a value based on joystick rotation. (0 to 1)\nWhen opened the (Parameter) is set to (Value).\nWhen closed (Parameter) is reset to zero.", MessageType.Info);
+					case VRCExpressionsMenu.Control.ControlType.RadialPuppet:
+						EditorGUI.HelpBox(_rect, "Puppet menu that sets a value based on joystick rotation. (0 to 1)\nWhen opened the (Parameter) is set to (Value).\nWhen closed (Parameter) is reset to zero.", MessageType.Info);
 						break;
 				}
+				rect.y += EditorGUIUtility.singleLineHeight * 2.75f;
 
-				//Param
-				switch (controlType)
+				_rect = new Rect(rect.x, rect.y, rect.width, EditorGUIUtility.singleLineHeight);
+				DrawParameterDropDown(_rect, parameter, "Parameter");
+				rect.y += EditorGUIUtility.singleLineHeight * 1.25f;
+
 				{
-					case ExpressionControl.ControlType.Button:
-					case ExpressionControl.ControlType.Toggle:
-					case ExpressionControl.ControlType.SubMenu:
-					case ExpressionControl.ControlType.TwoAxisPuppet:
-					case ExpressionControl.ControlType.FourAxisPuppet:
-					case ExpressionControl.ControlType.RadialPuppet:
-						DrawParameterDropDown(parameter, "Parameter");
-						DrawParameterValue(parameter, value);
-						break;
+					float rect_y = rect.y;
+					_rect = new Rect(rect.x, rect.y, rect.width, EditorGUIUtility.singleLineHeight);
+					DrawParameterValue(_rect, parameter, value, ref rect_y);
+					rect.y = rect_y;
 				}
-				EditorGUILayout.LabelField("", GUI.skin.horizontalSlider);
 
 				//Style
 				/*if (controlType == ExpressionsControl.ControlType.Toggle)
@@ -156,46 +245,103 @@ public class VRCExpressionsMenuEditor : Editor
 					style.intValue = EditorGUILayout.Popup("Visual Style", style.intValue, ToggleStyles);
 				}*/
 
-				//Sub menu
-				if (controlType == ExpressionControl.ControlType.SubMenu)
-				{
-					EditorGUILayout.PropertyField(subMenu);
-				}
-
 				//Puppet Parameter Set
 				switch (controlType)
 				{
 					case ExpressionControl.ControlType.TwoAxisPuppet:
+						// Separator Slider
+						_rect = new Rect(rect.x, rect.y, rect.width, EditorGUIUtility.singleLineHeight);
+						EditorGUI.LabelField(_rect, "", GUI.skin.horizontalSlider);
+						rect.y += EditorGUIUtility.singleLineHeight * 1.25f;
+
 						subParameters.arraySize = 2;
 						labels.arraySize = 4;
 
-						DrawParameterDropDown(subParameters.GetArrayElementAtIndex(0), "Parameter Horizontal", false);
-						DrawParameterDropDown(subParameters.GetArrayElementAtIndex(1), "Parameter Vertical", false);
 
-						DrawLabel(labels.GetArrayElementAtIndex(0), "Label Up");
-						DrawLabel(labels.GetArrayElementAtIndex(1), "Label Right");
-						DrawLabel(labels.GetArrayElementAtIndex(2), "Label Down");
-						DrawLabel(labels.GetArrayElementAtIndex(3), "Label Left");
+						_rect = new Rect(rect.x, rect.y, rect.width, EditorGUIUtility.singleLineHeight);
+						DrawParameterDropDown(_rect, subParameters.GetArrayElementAtIndex(0), "Parameter Horizontal", false);
+						rect.y += EditorGUIUtility.singleLineHeight * 1.25f;
+
+						_rect = new Rect(rect.x, rect.y, rect.width, EditorGUIUtility.singleLineHeight);
+						DrawParameterDropDown(_rect, subParameters.GetArrayElementAtIndex(1), "Parameter Vertical", false);
+						rect.y += EditorGUIUtility.singleLineHeight * 1.25f;
+
+						_rect = new Rect(rect.x, rect.y, rect.width, EditorGUIUtility.singleLineHeight);
+						DrawLabel(_rect, labels.GetArrayElementAtIndex(0), "Label Up");
+						rect.y += EditorGUIUtility.singleLineHeight * 1.25f * 3;
+
+						_rect = new Rect(rect.x, rect.y, rect.width, EditorGUIUtility.singleLineHeight);
+						DrawLabel(_rect, labels.GetArrayElementAtIndex(1), "Label Right");
+						rect.y += EditorGUIUtility.singleLineHeight * 1.25f * 3;
+
+						_rect = new Rect(rect.x, rect.y, rect.width, EditorGUIUtility.singleLineHeight);
+						DrawLabel(_rect, labels.GetArrayElementAtIndex(2), "Label Down");
+						rect.y += EditorGUIUtility.singleLineHeight * 1.25f * 3;
+
+						_rect = new Rect(rect.x, rect.y, rect.width, EditorGUIUtility.singleLineHeight);
+						DrawLabel(_rect, labels.GetArrayElementAtIndex(3), "Label Left");
 						break;
 					case ExpressionControl.ControlType.FourAxisPuppet:
+						// Separator Slider
+						_rect = new Rect(rect.x, rect.y, rect.width, EditorGUIUtility.singleLineHeight);
+						EditorGUI.LabelField(_rect, "", GUI.skin.horizontalSlider);
+						rect.y += EditorGUIUtility.singleLineHeight * 1.25f;
+
 						subParameters.arraySize = 4;
 						labels.arraySize = 4;
 
-						DrawParameterDropDown(subParameters.GetArrayElementAtIndex(0), "Parameter Up", false);
-						DrawParameterDropDown(subParameters.GetArrayElementAtIndex(1), "Parameter Right", false);
-						DrawParameterDropDown(subParameters.GetArrayElementAtIndex(2), "Parameter Down", false);
-						DrawParameterDropDown(subParameters.GetArrayElementAtIndex(3), "Parameter Left", false);
+						_rect = new Rect(rect.x, rect.y, rect.width, EditorGUIUtility.singleLineHeight);
+						DrawParameterDropDown(_rect, subParameters.GetArrayElementAtIndex(0), "Parameter Up", false);
+						rect.y += EditorGUIUtility.singleLineHeight * 1.25f;
 
-						DrawLabel(labels.GetArrayElementAtIndex(0), "Label Up");
-						DrawLabel(labels.GetArrayElementAtIndex(1), "Label Right");
-						DrawLabel(labels.GetArrayElementAtIndex(2), "Label Down");
-						DrawLabel(labels.GetArrayElementAtIndex(3), "Label Left");
+						_rect = new Rect(rect.x, rect.y, rect.width, EditorGUIUtility.singleLineHeight);
+						DrawParameterDropDown(_rect, subParameters.GetArrayElementAtIndex(1), "Parameter Right", false);
+
+						rect.y += EditorGUIUtility.singleLineHeight * 1.25f;
+						_rect = new Rect(rect.x, rect.y, rect.width, EditorGUIUtility.singleLineHeight);
+						DrawParameterDropDown(_rect, subParameters.GetArrayElementAtIndex(2), "Parameter Down", false);
+
+						rect.y += EditorGUIUtility.singleLineHeight * 1.25f;
+						_rect = new Rect(rect.x, rect.y, rect.width, EditorGUIUtility.singleLineHeight);
+						DrawParameterDropDown(_rect, subParameters.GetArrayElementAtIndex(3), "Parameter Left", false);
+						rect.y += EditorGUIUtility.singleLineHeight * 1.25f;
+
+
+						_rect = new Rect(rect.x, rect.y, rect.width, EditorGUIUtility.singleLineHeight);
+						DrawLabel(_rect, labels.GetArrayElementAtIndex(0), "Label Up");
+						rect.y += EditorGUIUtility.singleLineHeight * 1.25f * 3;
+
+						_rect = new Rect(rect.x, rect.y, rect.width, EditorGUIUtility.singleLineHeight);
+						DrawLabel(_rect, labels.GetArrayElementAtIndex(1), "Label Right");
+						rect.y += EditorGUIUtility.singleLineHeight * 1.25f * 3;
+
+						_rect = new Rect(rect.x, rect.y, rect.width, EditorGUIUtility.singleLineHeight);
+						DrawLabel(_rect, labels.GetArrayElementAtIndex(2), "Label Down");
+						rect.y += EditorGUIUtility.singleLineHeight * 1.25f * 3;
+
+						_rect = new Rect(rect.x, rect.y, rect.width, EditorGUIUtility.singleLineHeight);
+						DrawLabel(_rect, labels.GetArrayElementAtIndex(3), "Label Left");
 						break;
 					case ExpressionControl.ControlType.RadialPuppet:
+						// Separator Slider
+						_rect = new Rect(rect.x, rect.y, rect.width, EditorGUIUtility.singleLineHeight);
+						EditorGUI.LabelField(_rect, "", GUI.skin.horizontalSlider);
+						rect.y += EditorGUIUtility.singleLineHeight * 1.25f;
+
 						subParameters.arraySize = 1;
 						labels.arraySize = 0;
 
-						DrawParameterDropDown(subParameters.GetArrayElementAtIndex(0), "Paramater Rotation", false);
+						_rect = new Rect(rect.x, rect.y, rect.width, EditorGUIUtility.singleLineHeight);
+						DrawParameterDropDown(_rect, subParameters.GetArrayElementAtIndex(0), "Paramater Rotation", false);
+						break;
+					case VRCExpressionsMenu.Control.ControlType.SubMenu:
+						// Separator Slider
+						_rect = new Rect(rect.x, rect.y, rect.width, EditorGUIUtility.singleLineHeight);
+						EditorGUI.LabelField(_rect, "", GUI.skin.horizontalSlider);
+						rect.y += EditorGUIUtility.singleLineHeight * 1.25f;
+
+						_rect = new Rect(rect.x, rect.y, rect.width, EditorGUIUtility.singleLineHeight);
+						EditorGUI.PropertyField(_rect, subMenu);
 						break;
 					default:
 						subParameters.arraySize = 0;
@@ -203,19 +349,19 @@ public class VRCExpressionsMenuEditor : Editor
 						break;
 				}
 			}
-			EditorGUI.indentLevel -= 1;
 		}
-		GUILayout.EndVertical();
 	}
-	void DrawLabel(SerializedProperty subControl, string name)
+	void DrawLabel(Rect rect, SerializedProperty subControl, string name)
 	{
 		var nameProp = subControl.FindPropertyRelative("name");
 		var icon = subControl.FindPropertyRelative("icon");
 
-		EditorGUILayout.LabelField(name);
+		EditorGUI.LabelField(rect, name);
 		EditorGUI.indentLevel += 2;
-		EditorGUILayout.PropertyField(nameProp);
-		EditorGUILayout.PropertyField(icon);
+		rect.y += EditorGUIUtility.singleLineHeight * 1.25f;
+		EditorGUI.PropertyField(new Rect(rect), nameProp); 
+		rect.y += EditorGUIUtility.singleLineHeight * 1.25f;
+		EditorGUI.PropertyField(new Rect(rect), icon);
 		EditorGUI.indentLevel -= 2;
 	}
 
@@ -293,14 +439,13 @@ public class VRCExpressionsMenuEditor : Editor
 			return activeDescriptor.GetExpressionParameter(i);
 		return null;
 	}
-	void DrawParameterDropDown(SerializedProperty parameter, string name, bool allowBool=true)
+	void DrawParameterDropDown(Rect rect, SerializedProperty parameter, string name, bool allowBool=true)
 	{
 		var parameterName = parameter.FindPropertyRelative("name");
 		VRCExpressionParameters.Parameter param = null;
 		string value = parameterName.stringValue;
 
 		bool parameterFound = false;
-		EditorGUILayout.BeginHorizontal();
 		{
 			if(activeDescriptor != null)
 			{
@@ -329,7 +474,7 @@ public class VRCExpressionsMenuEditor : Editor
 
 				//Dropdown
 				EditorGUI.BeginChangeCheck();
-				currentIndex = EditorGUILayout.Popup(name, currentIndex + 1, parameterNames);
+				currentIndex = EditorGUI.Popup(new Rect(rect.x, rect.y, rect.width - rect.width * 0.25f, rect.height), name, currentIndex + 1, parameterNames);
 				if (EditorGUI.EndChangeCheck())
 				{
 					if (currentIndex == 0)
@@ -341,26 +486,25 @@ public class VRCExpressionsMenuEditor : Editor
 			else
 			{
 				EditorGUI.BeginDisabledGroup(true);
-				EditorGUILayout.Popup(0, new string[0]);
+				EditorGUI.Popup(new Rect(rect.x, rect.y, rect.width - rect.width * 0.25f, rect.height), 0, new string[0]);
 				EditorGUI.EndDisabledGroup();
 			}
 
 			//Text field
-			parameterName.stringValue = EditorGUILayout.TextField(parameterName.stringValue, GUILayout.MaxWidth(200));
+			parameterName.stringValue = EditorGUI.TextField(new Rect(rect.width - rect.width * 0.25f + 40, rect.y, rect.width * 0.25f, rect.height), parameterName.stringValue);
 		}
-		EditorGUILayout.EndHorizontal();
 
 		if (!parameterFound)
 		{
-			EditorGUILayout.HelpBox("Parameter not found on the active avatar descriptor.", MessageType.Warning);
+			EditorGUI.HelpBox(new Rect(rect.x, rect.y + (EditorGUIUtility.singleLineHeight * 1.25f * 2), rect.width, EditorGUIUtility.singleLineHeight * 2), "Parameter not found on the active avatar descriptor.", MessageType.Warning);
 		}
 
 		if(!allowBool && param != null && param.valueType == ExpressionParameters.ValueType.Bool)
 		{
-			EditorGUILayout.HelpBox("Bool parameters not valid for this choice.", MessageType.Error);
+			EditorGUI.HelpBox(new Rect(rect.x, rect.y + (EditorGUIUtility.singleLineHeight * 1.25f * 2), rect.width, EditorGUIUtility.singleLineHeight * 2), "Bool parameters not valid for this choice.", MessageType.Error);
 		}
 	}
-	void DrawParameterValue(SerializedProperty parameter, SerializedProperty value)
+	void DrawParameterValue(Rect rect, SerializedProperty parameter, SerializedProperty value, ref float rect_y)
 	{
 		string paramName = parameter.FindPropertyRelative("name").stringValue;
 		if (!string.IsNullOrEmpty(paramName))
@@ -370,11 +514,13 @@ public class VRCExpressionsMenuEditor : Editor
 			{
 				if (paramDef.valueType == ExpressionParameters.ValueType.Int)
 				{
-					value.floatValue = EditorGUILayout.IntField("Value", Mathf.Clamp((int)value.floatValue, 0, 255));
+					value.floatValue = EditorGUI.IntField(rect, "Value", Mathf.Clamp((int)value.floatValue, 0, 255));
+					rect_y += EditorGUIUtility.singleLineHeight * 1.25f;
 				}
 				else if (paramDef.valueType == ExpressionParameters.ValueType.Float)
 				{
-					value.floatValue = EditorGUILayout.FloatField("Value", Mathf.Clamp(value.floatValue, -1f, 1f));
+					value.floatValue = EditorGUI.FloatField(rect, "Value", Mathf.Clamp(value.floatValue, -1f, 1f));
+					rect_y += EditorGUIUtility.singleLineHeight * 1.25f;
 				}
 				else if(paramDef.valueType == ExpressionParameters.ValueType.Bool)
 				{
@@ -384,7 +530,7 @@ public class VRCExpressionsMenuEditor : Editor
 			else
 			{
 				EditorGUI.BeginDisabledGroup(true);
-				value.floatValue = EditorGUILayout.FloatField("Value", value.floatValue);
+				value.floatValue = EditorGUI.FloatField(rect, "Value", value.floatValue);
 				EditorGUI.EndDisabledGroup();
 			}
 		}
