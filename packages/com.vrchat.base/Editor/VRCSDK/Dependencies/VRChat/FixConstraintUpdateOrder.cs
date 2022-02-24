@@ -1,14 +1,13 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using UnityEditor;
 using UnityEngine;
 using UnityEngine.LowLevel;
 using UnityEngine.PlayerLoop;
 
 namespace VRC.SDKBase.Editor
 {
+#if !VRC_CLIENT
     public static class FixConstraintUpdateOrder
     {
         [RuntimeInitializeOnLoadMethod]
@@ -37,4 +36,5 @@ namespace VRC.SDKBase.Editor
             PlayerLoop.SetPlayerLoop(currentPlayerLoopSystem);
         }
     }
+#endif
 }

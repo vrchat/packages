@@ -226,15 +226,20 @@ namespace VRC.Core
 
             foreach(KeyValuePair<Type, List<UIBehaviour>> uiBehavioursOfTypeKvp in uiBehavioursByType)
             {
-                Type uiBehaviourType = uiBehavioursOfTypeKvp.Key;
-                FieldInfo[] fieldInfos = uiBehaviourType.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.FlattenHierarchy);
                 List<FieldInfo> unityEventFieldInfos = new List<FieldInfo>();
-                foreach(FieldInfo fieldInfo in fieldInfos)
+                Type currentType = uiBehavioursOfTypeKvp.Key;
+                while(currentType != null)
                 {
-                    if(typeof(UnityEventBase).IsAssignableFrom(fieldInfo.FieldType))
+                    FieldInfo[] fieldInfos = currentType.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.FlattenHierarchy);
+                    foreach(FieldInfo fieldInfo in fieldInfos)
                     {
-                        unityEventFieldInfos.Add(fieldInfo);
+                        if(typeof(UnityEventBase).IsAssignableFrom(fieldInfo.FieldType))
+                        {
+                            unityEventFieldInfos.Add(fieldInfo);
+                        }
                     }
+
+                    currentType = currentType.BaseType;
                 }
 
                 if(unityEventFieldInfos.Count <= 0)

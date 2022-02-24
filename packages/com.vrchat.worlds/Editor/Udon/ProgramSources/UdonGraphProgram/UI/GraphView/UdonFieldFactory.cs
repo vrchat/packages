@@ -28,7 +28,11 @@ namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI
         {
             AddDrawer(typeof(bool), typeof(Toggle));
             AddDrawer(typeof(int), typeof(IntegerField));
+            AddDrawer(typeof(uint), typeof(UnsignedIntegerField));
             AddDrawer(typeof(long), typeof(LongField));
+            AddDrawer(typeof(ulong), typeof(UnsignedLongField));
+            AddDrawer(typeof(short), typeof(ShortField));
+            AddDrawer(typeof(ushort), typeof(UnsignedShortField));
             AddDrawer(typeof(float), typeof(FloatField));
             AddDrawer(typeof(double), typeof(DoubleField));
             AddDrawer(typeof(string), typeof(TextField));
@@ -47,6 +51,8 @@ namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI
             AddDrawer(typeof(RectInt), typeof(RectIntField));
             AddDrawer(typeof(char), typeof(CharField));
             AddDrawer(typeof(byte), typeof(ByteField));
+            AddDrawer(typeof(sbyte), typeof(SByteField));
+            AddDrawer(typeof(decimal), typeof(DecimalField));
             AddDrawer(typeof(Quaternion), typeof(QuaternionField));
             AddDrawer(typeof(LayerMask), typeof(LayerMaskField));
             AddDrawer(typeof(VRCUrl), typeof(VRCUrlField));

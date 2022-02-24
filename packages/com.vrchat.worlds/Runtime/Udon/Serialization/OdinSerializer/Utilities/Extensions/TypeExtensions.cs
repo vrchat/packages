@@ -31,15 +31,26 @@ namespace VRC.Udon.Serialization.OdinSerializer.Utilities
     /// </summary>
     public static class TypeExtensions
     {
+        private static readonly Func<float, float, bool> FloatEqualityComparerFunc = FloatEqualityComparer;
+        private static readonly Func<double, double, bool> DoubleEqualityComparerFunc = DoubleEqualityComparer;
+        private static readonly Func<Quaternion, Quaternion, bool> QuaternionEqualityComparerFunc = QuaternionEqualityComparer;
+
         private static readonly object GenericConstraintsSatisfaction_LOCK = new object();
         private static readonly Dictionary<Type, Type> GenericConstraintsSatisfactionInferredParameters = new Dictionary<Type, Type>();
         private static readonly Dictionary<Type, Type> GenericConstraintsSatisfactionResolvedMap = new Dictionary<Type, Type>();
         private static readonly HashSet<Type> GenericConstraintsSatisfactionProcessedParams = new HashSet<Type>();
 
+        private static readonly Type GenericListInterface = typeof(IList<>);
+        private static readonly Type GenericCollectionInterface = typeof(ICollection<>);
+
         private static readonly object WeaklyTypedTypeCastDelegates_LOCK = new object();
         private static readonly object StronglyTypedTypeCastDelegates_LOCK = new object();
         private static readonly DoubleLookupDictionary<Type, Type, Func<object, object>> WeaklyTypedTypeCastDelegates = new DoubleLookupDictionary<Type, Type, Func<object, object>>();
         private static readonly DoubleLookupDictionary<Type, Type, Delegate> StronglyTypedTypeCastDelegates = new DoubleLookupDictionary<Type, Type, Delegate>();
+
+        private static readonly Type[] TwoLengthTypeArray_Cached = new Type[2];
+
+        private static readonly Stack<Type> GenericArgumentsContainsTypes_ArgsToCheckCached = new Stack<Type>();
 
         private static HashSet<string> ReservedCSharpKeywords = new HashSet<string>()
         {
@@ -496,6 +507,23 @@ namespace VRC.Udon.Serialization.OdinSerializer.Utilities
             return null;
         }
 
+        private static bool FloatEqualityComparer(float a, float b)
+        {
+            if (float.IsNaN(a) && float.IsNaN(b)) return true;
+            return a == b;
+        }
+
+        private static bool DoubleEqualityComparer(double a, double b)
+        {
+            if (double.IsNaN(a) && double.IsNaN(b)) return true;
+            return a == b;
+        }
+
+        private static bool QuaternionEqualityComparer(Quaternion a, Quaternion b)
+        {
+            return a.x == b.x && a.y == b.y && a.z == b.z && a.w == b.w;
+        }
+
         /// <summary>
         /// Gets an equality comparer delegate used to compare the equality of values of a given type. In order, this will be:
         ///
@@ -506,45 +534,21 @@ namespace VRC.Udon.Serialization.OdinSerializer.Utilities
         /// <remarks>
         /// <para>Note that in the special case of the type <see cref="UnityEngine.Quaternion"/>, a special equality comparer is returned that only checks whether all the Quaternion components are equal.</para>
         /// <para>This is because, by default, Quaternion's equality operator is broken when operating on invalid quaternions; "default(Quaternion) == default(Quaternion)" evaluates to false, and this causes a multitude of problems.</para>
+        /// <para>Special delegates are also returned for float and double, that consider float.NaN to be equal to float.NaN, and double.NaN to be equal to double.NaN.</para>
         /// </remarks>
         public static Func<T, T, bool> GetEqualityComparerDelegate<T>()
         {
-            Func<T, T, bool> result;
+            if (typeof(T) == typeof(float))
+                return (Func<T, T, bool>)(object)FloatEqualityComparerFunc;
+            else if (typeof(T) == typeof(double))
+                return (Func<T, T, bool>)(object)DoubleEqualityComparerFunc;
+            else if (typeof(T) == typeof(Quaternion))
+                return (Func<T, T, bool>)(object)QuaternionEqualityComparerFunc;
 
-            MethodInfo equalityMethod = typeof(T)
-                .GetOperatorMethods(Operator.Equality)
-                .FirstOrDefault(x =>
-                {
-                    var p = x.GetParameters();
+            Func<T, T, bool> result = null;
+            MethodInfo equalityMethod;
 
-                    if (p.Length != 2)
-                        return false;
-
-                    if (x.ReturnType != typeof(bool))
-                        return false;
-
-                    if (p[0].ParameterType != typeof(T))
-                        return false;
-
-                    if (p[1].ParameterType != typeof(T))
-                        return false;
-
-                    return true;
-                });
-
-            if (equalityMethod != null)
-            {
-                if (typeof(T) == typeof(Quaternion))
-                {
-                    //Func<Quaternion, Quaternion, bool> equalityOp = (Func<Quaternion, Quaternion, bool>)Delegate.CreateDelegate(typeof(Func<Quaternion, Quaternion, bool>), equalityMethod, true);
-                    result = (Func<T, T, bool>)(object)(Func<Quaternion, Quaternion, bool>)((a, b) => /*equalityOp(a, b) ||*/ (a.x == b.x && a.y == b.y && a.z == b.z && a.w == b.w));
-                }
-                else
-                {
-                    result = (Func<T, T, bool>)Delegate.CreateDelegate(typeof(Func<T, T, bool>), equalityMethod, true);
-                }
-            }
-            else if (typeof(IEquatable<T>).IsAssignableFrom(typeof(T)))
+            if (typeof(IEquatable<T>).IsAssignableFrom(typeof(T)))
             {
                 if (typeof(T).IsValueType)
                 {
@@ -574,120 +578,30 @@ namespace VRC.Udon.Serialization.OdinSerializer.Utilities
             }
             else
             {
+                Type currentType = typeof(T);
+
+                while (currentType != null && currentType != typeof(object))
+        {
+                    equalityMethod = currentType.GetOperatorMethod(Operator.Equality, currentType, currentType);
+
+                    if (equalityMethod != null)
+        {
+                        result = (Func<T, T, bool>)Delegate.CreateDelegate(typeof(Func<T, T, bool>), equalityMethod, true);
+                        break;
+            }
+
+                    currentType = currentType.BaseType;
+            }
+            }
+
+            if (result == null)
+            {
                 var comparer = EqualityComparer<T>.Default;
                 result = comparer.Equals;
             }
 
             return result;
-        }
-
-        /// <summary>
-        /// Determines whether a MemberInfo has the attribute specified in the generic argument.
-        /// </summary>
-        /// <typeparam name="T">The attribute type.</typeparam>
-        /// <param name="memberInfo">The MemberInfo.</param>
-        public static bool HasCustomAttribute<T>(this MemberInfo memberInfo) where T : Attribute
-        {
-            return HasCustomAttribute(memberInfo, typeof(T), false);
-        }
-
-        /// <summary>
-        /// Determines whether a MemberInfo has the attribute specified in the generic argument.
-        /// </summary>
-        /// <typeparam name="T">The attribute type.</typeparam>
-        /// <param name="memberInfo">The MemberInfo.</param>
-        /// <param name="inherit">If true, specifies to also search the ancestors of element for custom attributes.</param>
-        public static bool HasCustomAttribute<T>(this MemberInfo memberInfo, bool inherit) where T : Attribute
-        {
-            return HasCustomAttribute(memberInfo, typeof(T), inherit);
-        }
-
-        /// <summary>
-        /// Determines whether a MemberInfo has the attribute specified in the generic argument.
-        /// </summary>
-        /// <typeparam name="T">The attribute type.</typeparam>
-        /// <param name="memberInfo">The MemberInfo.</param>
-        /// <param name="attribute">The attribute instance.</param>
-        public static bool HasCustomAttribute<T>(this MemberInfo memberInfo, out T attribute) where T : Attribute
-        {
-            return HasCustomAttribute(memberInfo, false, out attribute);
-        }
-
-        /// <summary>
-        /// Determines whether a MemberInfo has the attribute specified in the generic argument.
-        /// </summary>
-        /// <typeparam name="T">The attribute type.</typeparam>
-        /// <param name="memberInfo">The MemberInfo.</param>
-        /// <param name="attribute">The attribute instance.</param>
-        /// <param name="inherit">If true, specifies to also search the ancestors of element for custom attributes.</param>
-        public static bool HasCustomAttribute<T>(this MemberInfo memberInfo, bool inherit, out T attribute) where T : Attribute
-        {
-            Attribute attr;
-
-            var result = HasCustomAttribute(memberInfo, typeof(T), inherit, out attr);
-            attribute = result ? (T)attr : null;
-
-            return result;
-        }
-
-        /// <summary>
-        /// Determines whether a MemberInfo has the attribute specified.
-        /// </summary>
-        /// <param name="memberInfo">The MemberInfo.</param>
-        /// <param name="customAttributeType">Type of the custom attribute.</param>
-        /// <param name="inherit">If true, specifies to also search the ancestors of element for custom attributes.</param>
-        public static bool HasCustomAttribute(this MemberInfo memberInfo, Type customAttributeType, bool inherit)
-        {
-            if (memberInfo == null)
-            {
-                throw new ArgumentNullException("memberInfo");
             }
-
-            if (customAttributeType == null)
-            {
-                throw new ArgumentNullException("customAttributeType");
-            }
-
-            if (typeof(Attribute).IsAssignableFrom(customAttributeType) == false)
-            {
-                throw new ArgumentException("Type " + customAttributeType.Name + " is not an attribute.");
-            }
-
-            return memberInfo.GetCustomAttributes(customAttributeType, inherit).Length > 0;
-        }
-
-        /// <summary>
-        /// Determines whether a MemberInfo has the attribute specified.
-        /// </summary>
-        /// <param name="memberInfo">The MemberInfo.</param>
-        /// <param name="customAttributeType">Type of the custom attribute.</param>
-        /// <param name="inherit">If true, specifies to also search the ancestors of element for custom attributes.</param>
-        /// <param name="attribute">The attribute instance.</param>
-        public static bool HasCustomAttribute(this MemberInfo memberInfo, Type customAttributeType, bool inherit, out Attribute attribute)
-        {
-            if (memberInfo == null || customAttributeType == null)
-            {
-                throw new ArgumentNullException();
-            }
-
-            if (typeof(Attribute).IsAssignableFrom(customAttributeType) == false)
-            {
-                throw new ArgumentException("Type " + customAttributeType.Name + " is not an attribute.");
-            }
-
-            var attrs = memberInfo.GetCustomAttributes(customAttributeType, inherit);
-
-            if (attrs.Length > 0)
-            {
-                attribute = (Attribute)attrs[0];
-                return true;
-            }
-            else
-            {
-                attribute = null;
-                return false;
-            }
-        }
 
         /// <summary>
         /// Gets the first attribute of type T. Returns null in the no attribute of type T was found.
@@ -726,11 +640,6 @@ namespace VRC.Udon.Serialization.OdinSerializer.Utilities
         /// <returns></returns>
         public static bool ImplementsOpenGenericType(this Type candidateType, Type openGenericType)
         {
-            if (candidateType == null || openGenericType == null)
-            {
-                throw new ArgumentNullException();
-            }
-
             if (openGenericType.IsInterface) return candidateType.ImplementsOpenGenericInterface(openGenericType);
             else return candidateType.ImplementsOpenGenericClass(openGenericType);
         }
@@ -744,19 +653,21 @@ namespace VRC.Udon.Serialization.OdinSerializer.Utilities
         /// <exception cref="System.ArgumentException">Type " + openGenericInterfaceType.Name + " is not a generic type definition and an interface.</exception>
         public static bool ImplementsOpenGenericInterface(this Type candidateType, Type openGenericInterfaceType)
         {
-            if (candidateType == null || openGenericInterfaceType == null)
+            if (candidateType == openGenericInterfaceType)
+                return true;
+
+            if (candidateType.IsGenericType && candidateType.GetGenericTypeDefinition() == openGenericInterfaceType)
+                return true;
+
+            var interfaces = candidateType.GetInterfaces();
+
+            for (int i = 0; i < interfaces.Length; i++)
             {
-                throw new ArgumentNullException();
+                if (interfaces[i].ImplementsOpenGenericInterface(openGenericInterfaceType))
+                    return true;
             }
 
-            if (openGenericInterfaceType.IsGenericTypeDefinition == false || openGenericInterfaceType.IsInterface == false)
-            {
-                throw new ArgumentException("Type " + openGenericInterfaceType.Name + " is not a generic type definition and an interface.");
-            }
-
-            return candidateType.Equals(openGenericInterfaceType)
-                || (candidateType.IsGenericType && candidateType.GetGenericTypeDefinition().Equals(openGenericInterfaceType))
-                || candidateType.GetInterfaces().Any(i => i.IsGenericType && i.ImplementsOpenGenericInterface(openGenericInterfaceType));
+            return false;
         }
 
         /// <summary>
@@ -766,18 +677,15 @@ namespace VRC.Udon.Serialization.OdinSerializer.Utilities
         /// <param name="openGenericType">Type of the open generic interface.</param>
         public static bool ImplementsOpenGenericClass(this Type candidateType, Type openGenericType)
         {
-            if (candidateType == null || openGenericType == null)
-            {
-                throw new ArgumentNullException();
-            }
+            if (candidateType.IsGenericType && candidateType.GetGenericTypeDefinition() == openGenericType)
+                return true;
 
-            if (openGenericType.IsGenericTypeDefinition == false || !(openGenericType.IsClass || openGenericType.IsValueType))
-            {
-                throw new ArgumentException("Type " + openGenericType.Name + " is not a generic type definition and a class/struct.");
-            }
+            var baseType = candidateType.BaseType;
 
-            return (candidateType.IsGenericType && candidateType.GetGenericTypeDefinition() == openGenericType)
-                || (candidateType.BaseType != null && candidateType.BaseType.ImplementsOpenGenericClass(openGenericType));
+            if (baseType != null && baseType.ImplementsOpenGenericClass(openGenericType))
+                return true;
+
+            return false;
         }
 
         /// <summary>
@@ -787,11 +695,6 @@ namespace VRC.Udon.Serialization.OdinSerializer.Utilities
         /// <param name="openGenericType">The open generic type to get the arguments of.</param>
         public static Type[] GetArgumentsOfInheritedOpenGenericType(this Type candidateType, Type openGenericType)
         {
-            if (candidateType == null || openGenericType == null)
-            {
-                throw new ArgumentNullException();
-            }
-
             if (openGenericType.IsInterface) return candidateType.GetArgumentsOfInheritedOpenGenericInterface(openGenericType);
             else return candidateType.GetArgumentsOfInheritedOpenGenericClass(openGenericType);
         }
@@ -803,28 +706,15 @@ namespace VRC.Udon.Serialization.OdinSerializer.Utilities
         /// <param name="openGenericType">Type of the open generic class.</param>
         public static Type[] GetArgumentsOfInheritedOpenGenericClass(this Type candidateType, Type openGenericType)
         {
-            if (candidateType == null || openGenericType == null)
-            {
-                throw new ArgumentNullException();
-            }
-
-            if (openGenericType.IsGenericTypeDefinition == false || !(openGenericType.IsClass || openGenericType.IsValueType))
-            {
-                throw new ArgumentException("Type " + openGenericType.Name + " is not a generic type definition and a class/struct.");
-            }
-
             if (candidateType.IsGenericType && candidateType.GetGenericTypeDefinition() == openGenericType)
-            {
                 return candidateType.GetGenericArguments();
-            }
-            else if (candidateType.BaseType != null && candidateType.BaseType.ImplementsOpenGenericClass(openGenericType))
-            {
-                return candidateType.BaseType.GetArgumentsOfInheritedOpenGenericClass(openGenericType);
-            }
-            else
-            {
-                return new Type[0];
-            }
+
+            var baseType = candidateType.BaseType;
+
+            if (baseType != null)
+                return baseType.GetArgumentsOfInheritedOpenGenericClass(openGenericType);
+
+            return null;
         }
 
         /// <summary>
@@ -834,37 +724,162 @@ namespace VRC.Udon.Serialization.OdinSerializer.Utilities
         /// <param name="openGenericInterfaceType">Type of the open generic interface.</param>
         public static Type[] GetArgumentsOfInheritedOpenGenericInterface(this Type candidateType, Type openGenericInterfaceType)
         {
-            if (candidateType == null || openGenericInterfaceType == null)
+            // This if clause fixes an "error" in newer .NET Runtimes where enum arrays 
+            //   implement interfaces like IList<int>, which will be matched on by Odin
+            //   before the IList<TheEnum> interface and cause a lot of issues because
+            //   you can't actually use an enum array as if it was an IList<int>.
+            if ((openGenericInterfaceType == GenericListInterface || openGenericInterfaceType == GenericCollectionInterface) && candidateType.IsArray)
             {
-                throw new ArgumentNullException();
+                return new Type[] { candidateType.GetElementType() };
             }
 
-            if (openGenericInterfaceType.IsGenericTypeDefinition == false || openGenericInterfaceType.IsInterface == false)
-            {
-                throw new ArgumentException("Type " + openGenericInterfaceType.Name + " is not a generic type definition and an interface.");
-            }
-
-            bool valid = candidateType.Equals(openGenericInterfaceType)
-                || (candidateType.IsGenericType && candidateType.GetGenericTypeDefinition().Equals(openGenericInterfaceType));
-
-            if (valid)
-            {
+            if (candidateType == openGenericInterfaceType)
                 return candidateType.GetGenericArguments();
-            }
-            else
-            {
-                Type[] result;
 
-                foreach (var i in candidateType.GetInterfaces())
-                {
-                    if (i.IsGenericType && (result = i.GetArgumentsOfInheritedOpenGenericInterface(openGenericInterfaceType)) != null)
-                    {
-                        return result;
-                    }
-                }
+            if (candidateType.IsGenericType && candidateType.GetGenericTypeDefinition() == openGenericInterfaceType)
+                return candidateType.GetGenericArguments();
+
+            var interfaces = candidateType.GetInterfaces();
+
+            for (int i = 0; i < interfaces.Length; i++)
+            {
+                var @interface = interfaces[i];
+                if (!@interface.IsGenericType) continue;
+
+                var result = @interface.GetArgumentsOfInheritedOpenGenericInterface(openGenericInterfaceType);
+
+                if (result != null)
+                    return result;
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// Gets the MethodInfo of a specific operator kind, with the given left and right operands. This overload is *far* faster than any of the other GetOperatorMethod implementations, and should be used whenever possible.
+        /// </summary>
+        public static MethodInfo GetOperatorMethod(this Type type, Operator op, Type leftOperand, Type rightOperand)
+            {
+            string methodName;
+
+            switch (op)
+            {
+                case Operator.Equality:
+                    methodName = "op_Equality";
+                    break;
+
+                case Operator.Inequality:
+                    methodName = "op_Inequality";
+                    break;
+
+                case Operator.Addition:
+                    methodName = "op_Addition";
+                    break;
+
+                case Operator.Subtraction:
+                    methodName = "op_Subtraction";
+                    break;
+
+                case Operator.Multiply:
+                    methodName = "op_Multiply";
+                    break;
+
+                case Operator.Division:
+                    methodName = "op_Division";
+                    break;
+
+                case Operator.LessThan:
+                    methodName = "op_LessThan";
+                    break;
+
+                case Operator.GreaterThan:
+                    methodName = "op_GreaterThan";
+                    break;
+
+                case Operator.LessThanOrEqual:
+                    methodName = "op_LessThanOrEqual";
+                    break;
+
+                case Operator.GreaterThanOrEqual:
+                    methodName = "op_GreaterThanOrEqual";
+                    break;
+
+                case Operator.Modulus:
+                    methodName = "op_Modulus";
+                    break;
+
+                case Operator.RightShift:
+                    methodName = "op_RightShift";
+                    break;
+
+                case Operator.LeftShift:
+                    methodName = "op_LeftShift";
+                    break;
+
+                case Operator.BitwiseAnd:
+                    methodName = "op_BitwiseAnd";
+                    break;
+
+                case Operator.BitwiseOr:
+                    methodName = "op_BitwiseOr";
+                    break;
+
+                case Operator.ExclusiveOr:
+                    methodName = "op_ExclusiveOr";
+                    break;
+
+                case Operator.BitwiseComplement:
+                    methodName = "op_OnesComplement";
+                    break;
+
+                case Operator.LogicalNot:
+                    methodName = "op_LogicalNot";
+                    break;
+
+                case Operator.LogicalAnd:
+                case Operator.LogicalOr:
+                    return null; // Not overridable
+
+                default:
+                    throw new NotImplementedException();
+            }
+
+            var types = TwoLengthTypeArray_Cached;
+
+            lock (types)
+                {
+                types[0] = leftOperand;
+                types[1] = rightOperand;
+
+                try
+                    {
+                    var result = type.GetMethod(methodName, Flags.StaticAnyVisibility, null, types, null);
+
+                    if (result != null && result.ReturnType != typeof(bool)) return null;
+
+                        return result;
+                    }
+                catch (AmbiguousMatchException)
+                {
+                    // We fallback to manual resolution
+                    var methods = type.GetMethods(Flags.StaticAnyVisibility);
+
+                    for (int i = 0; i < methods.Length; i++)
+                    {
+                        var method = methods[i];
+                        if (method.Name != methodName) continue;
+                        if (method.ReturnType != typeof(bool)) continue;
+                        var parameters = method.GetParameters();
+                        if (parameters.Length != 2) continue;
+                        if (!parameters[0].ParameterType.IsAssignableFrom(leftOperand)) continue;
+                        if (!parameters[1].ParameterType.IsAssignableFrom(rightOperand)) continue;
+
+                        return method;
+            }
+
+            return null;
+        }
+            }
         }
 
         /// <summary>
@@ -1303,8 +1318,9 @@ namespace VRC.Udon.Serialization.OdinSerializer.Utilities
         /// </summary>
         public static T GetCustomAttribute<T>(this Type type, bool inherit) where T : Attribute
         {
-            var all = GetCustomAttributes<T>(type, inherit).ToArray();
-            return (all == null || all.Length == 0) ? null : all[0];
+            var attrs = type.GetCustomAttributes(typeof(T), inherit);
+            if (attrs.Length == 0) return null;
+            return attrs[0] as T;
         }
 
         /// <summary>
@@ -1332,7 +1348,12 @@ namespace VRC.Udon.Serialization.OdinSerializer.Utilities
         /// <param name="inherit">If true, specifies to also search the ancestors of element for custom attributes.</param>
         public static IEnumerable<T> GetCustomAttributes<T>(this Type type, bool inherit) where T : Attribute
         {
-            return type.GetCustomAttributes(typeof(T), inherit).Cast<T>();
+            var attrs = type.GetCustomAttributes(typeof(T), inherit);
+
+            for (int i = 0; i < attrs.Length; i++)
+            {
+                yield return attrs[i] as T;
+            }
         }
 
         /// <summary>
@@ -2143,7 +2164,16 @@ namespace VRC.Udon.Serialization.OdinSerializer.Utilities
             bool[] typesSeen = new bool[types.Length];
             var args = type.GetGenericArguments();
 
-            Stack<Type> argsToCheck = new Stack<Type>(args);
+            var argsToCheck = GenericArgumentsContainsTypes_ArgsToCheckCached;
+
+            lock (argsToCheck)
+            {
+                argsToCheck.Clear();
+
+                for (int i = 0; i < args.Length; i++)
+                {
+                    argsToCheck.Push(args[i]);
+                }
 
             while (argsToCheck.Count > 0)
             {
@@ -2189,6 +2219,7 @@ namespace VRC.Udon.Serialization.OdinSerializer.Utilities
                     foreach (var innerArg in arg.GetGenericArguments())
                     {
                         argsToCheck.Push(innerArg);
+                        }
                     }
                 }
             }

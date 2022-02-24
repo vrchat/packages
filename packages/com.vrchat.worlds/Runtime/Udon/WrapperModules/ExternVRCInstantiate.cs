@@ -1,4 +1,5 @@
 ﻿#if !VRC_CLIENT
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using VRC.Udon;
@@ -7,6 +8,7 @@ using VRC.Udon.Common.Delegates;
 using VRC.Udon.Common.Interfaces;
 using VRC.Udon.Security.Interfaces;
 using VRC.Udon.Wrapper.Modules;
+using Object = UnityEngine.Object;
 
 [assembly: UdonWrapperModule(typeof(ExternVRCInstantiate))]
 
@@ -56,7 +58,7 @@ namespace VRC.Udon.Wrapper.Modules
             throw new System.NotSupportedException($"Function '{externFunctionSignature}' is not implemented yet");
         }
 
-        private void __Instantiate__UnityEngineGameObject__UnityEngineGameObject(IUdonHeap heap, uint[] parameterAddresses)
+        private void __Instantiate__UnityEngineGameObject__UnityEngineGameObject(IUdonHeap heap, Span<uint> parameterAddresses)
         {
             GameObject original = heap.GetHeapVariable<GameObject>(parameterAddresses[0]);
             #if !UDON_DISABLE_SECURITY

@@ -1,30 +1,20 @@
-﻿#if UNITY_2019_3_OR_NEWER
-using UnityEngine.UIElements;
-#else
-using UnityEngine.Experimental.UIElements;
-#endif
+﻿using UnityEngine.UIElements;
 
 namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI
 {
     public class CharField : BaseField<char>
     {
-#if UNITY_2019_3_OR_NEWER
         public CharField():base(null,null)
-#else
-        public CharField():base()
-#endif
         {
             // Set up styling
             AddToClassList("UdonValueField");
             
             // Create Char Editor and listen for changes
-            TextField field = new TextField();
-            field.maxLength = 1;
-#if UNITY_2019_3_OR_NEWER
+            TextField field = new TextField
+            {
+                maxLength = 1
+            };
             field.RegisterValueChangedCallback(
-#else
-            field.OnValueChanged(
-#endif
                 e =>
                     value = e.newValue.ToCharArray()[0]);
 

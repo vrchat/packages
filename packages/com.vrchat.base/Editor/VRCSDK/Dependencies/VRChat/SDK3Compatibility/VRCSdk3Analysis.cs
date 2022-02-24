@@ -1,4 +1,3 @@
-#define VRCUPM
 using System.Reflection;
 using System.Collections.Generic;
 using UnityEngine;

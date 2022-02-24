@@ -21,6 +21,11 @@ namespace VRC.Udon.Serialization.OdinSerializer.Utilities
     using System;
     using System.Threading;
 
+    public interface ICache : IDisposable
+    {
+        object Value { get; }
+    }
+
     /// <summary>
     /// Provides an easy way of claiming and freeing cached values of any non-abstract reference type with a public parameterless constructor.
     /// <para />
@@ -32,7 +37,7 @@ namespace VRC.Udon.Serialization.OdinSerializer.Utilities
     /// </summary>
     /// <typeparam name="T">The type which is cached.</typeparam>
     /// <seealso cref="System.IDisposable" />
-    public sealed class Cache<T> : IDisposable where T : class, new()
+    public sealed class Cache<T> : ICache where T : class, new()
     {
         private static readonly bool IsNotificationReceiver = typeof(ICacheNotificationReceiver).IsAssignableFrom(typeof(T));
         private static object[] FreeValues = new object[4];
@@ -80,6 +85,8 @@ namespace VRC.Udon.Serialization.OdinSerializer.Utilities
         ///   <c>true</c> if this cached value is free; otherwise, <c>false</c>.
         /// </value>
         public bool IsFree { get { return this.isFree; } }
+
+        object ICache.Value { get { return this.Value; } }
 
         /// <summary>
         /// Claims a cached value of type <see cref="T"/>.
