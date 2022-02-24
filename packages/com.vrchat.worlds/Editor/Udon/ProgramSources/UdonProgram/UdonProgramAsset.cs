@@ -496,6 +496,564 @@ namespace VRC.Udon.Editor.ProgramSources
                         dirty = true;
                     }
                 }
+                else if(variableType == typeof(short))
+                {
+                    short intValue = (short?)variableValue ?? default;
+                    EditorGUI.BeginChangeCheck();
+                    variableValue = (short)EditorGUILayout.IntField(symbol, intValue);
+                    if(EditorGUI.EndChangeCheck())
+                    {
+                        dirty = true;
+                    }
+                }
+                else if(variableType == typeof(short[]))
+                {
+                    short[] valueArray = (short[])variableValue;
+                    GUI.SetNextControlName("NodeField");
+                    bool showArray = false;
+                    if(_arrayStates.ContainsKey(symbol))
+                    {
+                        showArray = _arrayStates[symbol];
+                    }
+                    else
+                    {
+                        _arrayStates.Add(symbol, false);
+                    }
+                    EditorGUILayout.BeginVertical();
+
+                    EditorGUI.BeginChangeCheck();
+                    // Show Foldout Header
+                    showArray = EditorGUILayout.Foldout(showArray, symbol, true);
+                    // Save foldout state
+                    _arrayStates[symbol] = showArray;
+                    
+                    if(showArray)
+                    {
+                        EditorGUI.indentLevel++;
+                        int newSize = EditorGUILayout.IntField(
+                            "size:",
+                            valueArray != null && valueArray.Length > 0 ? valueArray.Length : 1
+                        );
+                        EditorGUILayout.Space();
+                        newSize = newSize >= 0 ? newSize : 0;
+                        Array.Resize(ref valueArray, newSize);
+                        
+                        if(valueArray != null && valueArray.Length > 0)
+                        {
+                            for(int i = 0; i < valueArray.Length; i++)
+                            {
+                                GUI.SetNextControlName("NodeField");
+                                valueArray[i] = (short)EditorGUILayout.IntField(
+                                    $"{i}:",
+                                    valueArray.Length > i ? valueArray[i] : 0);
+                            }
+                        }
+
+                        EditorGUI.indentLevel--;
+                    }
+                    EditorGUILayout.EndVertical();
+                    if(EditorGUI.EndChangeCheck())
+                    {
+                        variableValue = valueArray;
+                        dirty = true;
+                    }
+                }
+                else if(variableType == typeof(long))
+                {
+                    long intValue = (long?)variableValue ?? default;
+                    EditorGUI.BeginChangeCheck();
+                    variableValue = (long)EditorGUILayout.IntField(symbol, (int)intValue);
+                    if(EditorGUI.EndChangeCheck())
+                    {
+                        dirty = true;
+                    }
+                }
+                else if(variableType == typeof(long[]))
+                {
+                    long[] valueArray = (long[])variableValue;
+                    GUI.SetNextControlName("NodeField");
+                    bool showArray = false;
+                    if(_arrayStates.ContainsKey(symbol))
+                    {
+                        showArray = _arrayStates[symbol];
+                    }
+                    else
+                    {
+                        _arrayStates.Add(symbol, false);
+                    }
+                    EditorGUILayout.BeginVertical();
+
+                    EditorGUI.BeginChangeCheck();
+                    // Show Foldout Header
+                    showArray = EditorGUILayout.Foldout(showArray, symbol, true);
+                    // Save foldout state
+                    _arrayStates[symbol] = showArray;
+                    
+                    if(showArray)
+                    {
+                        EditorGUI.indentLevel++;
+                        int newSize = EditorGUILayout.IntField(
+                            "size:",
+                            valueArray != null && valueArray.Length > 0 ? valueArray.Length : 1
+                        );
+                        EditorGUILayout.Space();
+                        newSize = newSize >= 0 ? newSize : 0;
+                        Array.Resize(ref valueArray, newSize);
+                        
+                        if(valueArray != null && valueArray.Length > 0)
+                        {
+                            for(int i = 0; i < valueArray.Length; i++)
+                            {
+                                GUI.SetNextControlName("NodeField");
+                                valueArray[i] = EditorGUILayout.IntField(
+                                    $"{i}:",
+                                    valueArray.Length > i ? (int)valueArray[i] : 0);
+                            }
+                        }
+
+                        EditorGUI.indentLevel--;
+                    }
+                    EditorGUILayout.EndVertical();
+                    if(EditorGUI.EndChangeCheck())
+                    {
+                        variableValue = valueArray;
+                        dirty = true;
+                    }
+                }
+                else if(variableType == typeof(uint))
+                {
+                    uint intValue = (uint?)variableValue ?? default;
+                    EditorGUI.BeginChangeCheck();
+                    variableValue = (uint)EditorGUILayout.IntField(symbol, (int)intValue);
+                    if(EditorGUI.EndChangeCheck())
+                    {
+                        dirty = true;
+                    }
+                }
+                else if(variableType == typeof(uint[]))
+                {
+                    uint[] valueArray = (uint[])variableValue;
+                    GUI.SetNextControlName("NodeField");
+                    bool showArray = false;
+                    if(_arrayStates.ContainsKey(symbol))
+                    {
+                        showArray = _arrayStates[symbol];
+                    }
+                    else
+                    {
+                        _arrayStates.Add(symbol, false);
+                    }
+                    EditorGUILayout.BeginVertical();
+
+                    EditorGUI.BeginChangeCheck();
+                    // Show Foldout Header
+                    showArray = EditorGUILayout.Foldout(showArray, symbol, true);
+                    // Save foldout state
+                    _arrayStates[symbol] = showArray;
+                    
+                    if(showArray)
+                    {
+                        EditorGUI.indentLevel++;
+                        int newSize = EditorGUILayout.IntField(
+                            "size:",
+                            valueArray != null && valueArray.Length > 0 ? valueArray.Length : 1
+                        );
+                        EditorGUILayout.Space();
+                        newSize = newSize >= 0 ? newSize : 0;
+                        Array.Resize(ref valueArray, newSize);
+                        
+                        if(valueArray != null && valueArray.Length > 0)
+                        {
+                            for(int i = 0; i < valueArray.Length; i++)
+                            {
+                                GUI.SetNextControlName("NodeField");
+                                valueArray[i] = (uint)EditorGUILayout.IntField(
+                                    $"{i}:",
+                                    valueArray.Length > i ? (int)valueArray[i] : 0);
+                            }
+                        }
+
+                        EditorGUI.indentLevel--;
+                    }
+                    EditorGUILayout.EndVertical();
+                    if(EditorGUI.EndChangeCheck())
+                    {
+                        variableValue = valueArray;
+                        dirty = true;
+                    }
+                }
+                else if(variableType == typeof(ushort))
+                {
+                    ushort intValue = (ushort?)variableValue ?? default;
+                    EditorGUI.BeginChangeCheck();
+                    variableValue = (ushort)EditorGUILayout.IntField(symbol, (int)intValue);
+                    if(EditorGUI.EndChangeCheck())
+                    {
+                        dirty = true;
+                    }
+                }
+                else if(variableType == typeof(ushort[]))
+                {
+                    ushort[] valueArray = (ushort[])variableValue;
+                    GUI.SetNextControlName("NodeField");
+                    bool showArray = false;
+                    if(_arrayStates.ContainsKey(symbol))
+                    {
+                        showArray = _arrayStates[symbol];
+                    }
+                    else
+                    {
+                        _arrayStates.Add(symbol, false);
+                    }
+                    EditorGUILayout.BeginVertical();
+
+                    EditorGUI.BeginChangeCheck();
+                    // Show Foldout Header
+                    showArray = EditorGUILayout.Foldout(showArray, symbol, true);
+                    // Save foldout state
+                    _arrayStates[symbol] = showArray;
+                    
+                    if(showArray)
+                    {
+                        EditorGUI.indentLevel++;
+                        int newSize = EditorGUILayout.IntField(
+                            "size:",
+                            valueArray != null && valueArray.Length > 0 ? valueArray.Length : 1
+                        );
+                        EditorGUILayout.Space();
+                        newSize = newSize >= 0 ? newSize : 0;
+                        Array.Resize(ref valueArray, newSize);
+                        
+                        if(valueArray != null && valueArray.Length > 0)
+                        {
+                            for(int i = 0; i < valueArray.Length; i++)
+                            {
+                                GUI.SetNextControlName("NodeField");
+                                valueArray[i] = (ushort)EditorGUILayout.IntField(
+                                    $"{i}:",
+                                    valueArray.Length > i ? (int)valueArray[i] : 0);
+                            }
+                        }
+
+                        EditorGUI.indentLevel--;
+                    }
+                    EditorGUILayout.EndVertical();
+                    if(EditorGUI.EndChangeCheck())
+                    {
+                        variableValue = valueArray;
+                        dirty = true;
+                    }
+                }
+                else if(variableType == typeof(ulong))
+                {
+                    ulong intValue = (ulong?)variableValue ?? default;
+                    EditorGUI.BeginChangeCheck();
+                    variableValue = (ulong)EditorGUILayout.IntField(symbol, (int)intValue);
+                    if(EditorGUI.EndChangeCheck())
+                    {
+                        dirty = true;
+                    }
+                }
+                else if(variableType == typeof(ulong[]))
+                {
+                    ulong[] valueArray = (ulong[])variableValue;
+                    GUI.SetNextControlName("NodeField");
+                    bool showArray = false;
+                    if(_arrayStates.ContainsKey(symbol))
+                    {
+                        showArray = _arrayStates[symbol];
+                    }
+                    else
+                    {
+                        _arrayStates.Add(symbol, false);
+                    }
+                    EditorGUILayout.BeginVertical();
+
+                    EditorGUI.BeginChangeCheck();
+                    // Show Foldout Header
+                    showArray = EditorGUILayout.Foldout(showArray, symbol, true);
+                    // Save foldout state
+                    _arrayStates[symbol] = showArray;
+                    
+                    if(showArray)
+                    {
+                        EditorGUI.indentLevel++;
+                        int newSize = EditorGUILayout.IntField(
+                            "size:",
+                            valueArray != null && valueArray.Length > 0 ? valueArray.Length : 1
+                        );
+                        EditorGUILayout.Space();
+                        newSize = newSize >= 0 ? newSize : 0;
+                        Array.Resize(ref valueArray, newSize);
+                        
+                        if(valueArray != null && valueArray.Length > 0)
+                        {
+                            for(int i = 0; i < valueArray.Length; i++)
+                            {
+                                GUI.SetNextControlName("NodeField");
+                                valueArray[i] = (ulong)EditorGUILayout.IntField(
+                                    $"{i}:",
+                                    valueArray.Length > i ? (int)valueArray[i] : 0);
+                            }
+                        }
+
+                        EditorGUI.indentLevel--;
+                    }
+                    EditorGUILayout.EndVertical();
+                    if(EditorGUI.EndChangeCheck())
+                    {
+                        variableValue = valueArray;
+                        dirty = true;
+                    }
+                }
+                else if(variableType == typeof(byte))
+                {
+                    byte intValue = (byte?)variableValue ?? default;
+                    EditorGUI.BeginChangeCheck();
+                    variableValue = (byte)EditorGUILayout.IntField(symbol, (int)intValue);
+                    if(EditorGUI.EndChangeCheck())
+                    {
+                        dirty = true;
+                    }
+                }
+                else if(variableType == typeof(byte[]))
+                {
+                    byte[] valueArray = (byte[])variableValue;
+                    GUI.SetNextControlName("NodeField");
+                    bool showArray = false;
+                    if(_arrayStates.ContainsKey(symbol))
+                    {
+                        showArray = _arrayStates[symbol];
+                    }
+                    else
+                    {
+                        _arrayStates.Add(symbol, false);
+                    }
+                    EditorGUILayout.BeginVertical();
+
+                    EditorGUI.BeginChangeCheck();
+                    // Show Foldout Header
+                    showArray = EditorGUILayout.Foldout(showArray, symbol, true);
+                    // Save foldout state
+                    _arrayStates[symbol] = showArray;
+                    
+                    if(showArray)
+                    {
+                        EditorGUI.indentLevel++;
+                        int newSize = EditorGUILayout.IntField(
+                            "size:",
+                            valueArray != null && valueArray.Length > 0 ? valueArray.Length : 1
+                        );
+                        EditorGUILayout.Space();
+                        newSize = newSize >= 0 ? newSize : 0;
+                        Array.Resize(ref valueArray, newSize);
+                        
+                        if(valueArray != null && valueArray.Length > 0)
+                        {
+                            for(int i = 0; i < valueArray.Length; i++)
+                            {
+                                GUI.SetNextControlName("NodeField");
+                                valueArray[i] = (byte)EditorGUILayout.IntField(
+                                    $"{i}:",
+                                    valueArray.Length > i ? (int)valueArray[i] : 0);
+                            }
+                        }
+
+                        EditorGUI.indentLevel--;
+                    }
+                    EditorGUILayout.EndVertical();
+                    if(EditorGUI.EndChangeCheck())
+                    {
+                        variableValue = valueArray;
+                        dirty = true;
+                    }
+                }
+                else if(variableType == typeof(sbyte))
+                {
+                    sbyte intValue = (sbyte?)variableValue ?? default;
+                    EditorGUI.BeginChangeCheck();
+                    variableValue = (sbyte)EditorGUILayout.IntField(symbol, (int)intValue);
+                    if(EditorGUI.EndChangeCheck())
+                    {
+                        dirty = true;
+                    }
+                }
+                else if(variableType == typeof(sbyte[]))
+                {
+                    sbyte[] valueArray = (sbyte[])variableValue;
+                    GUI.SetNextControlName("NodeField");
+                    bool showArray = false;
+                    if(_arrayStates.ContainsKey(symbol))
+                    {
+                        showArray = _arrayStates[symbol];
+                    }
+                    else
+                    {
+                        _arrayStates.Add(symbol, false);
+                    }
+                    EditorGUILayout.BeginVertical();
+
+                    EditorGUI.BeginChangeCheck();
+                    // Show Foldout Header
+                    showArray = EditorGUILayout.Foldout(showArray, symbol, true);
+                    // Save foldout state
+                    _arrayStates[symbol] = showArray;
+                    
+                    if(showArray)
+                    {
+                        EditorGUI.indentLevel++;
+                        int newSize = EditorGUILayout.IntField(
+                            "size:",
+                            valueArray != null && valueArray.Length > 0 ? valueArray.Length : 1
+                        );
+                        EditorGUILayout.Space();
+                        newSize = newSize >= 0 ? newSize : 0;
+                        Array.Resize(ref valueArray, newSize);
+                        
+                        if(valueArray != null && valueArray.Length > 0)
+                        {
+                            for(int i = 0; i < valueArray.Length; i++)
+                            {
+                                GUI.SetNextControlName("NodeField");
+                                valueArray[i] = (sbyte)EditorGUILayout.IntField(
+                                    $"{i}:",
+                                    valueArray.Length > i ? (int)valueArray[i] : 0);
+                            }
+                        }
+
+                        EditorGUI.indentLevel--;
+                    }
+                    EditorGUILayout.EndVertical();
+                    if(EditorGUI.EndChangeCheck())
+                    {
+                        variableValue = valueArray;
+                        dirty = true;
+                    }
+                }
+                else if(variableType == typeof(double))
+                {
+                    double intValue = (double?)variableValue ?? default;
+                    EditorGUI.BeginChangeCheck();
+                    variableValue = (double)EditorGUILayout.DoubleField(symbol, intValue);
+                    if(EditorGUI.EndChangeCheck())
+                    {
+                        dirty = true;
+                    }
+                }
+                else if(variableType == typeof(double[]))
+                {
+                    double[] valueArray = (double[])variableValue;
+                    GUI.SetNextControlName("NodeField");
+                    bool showArray = false;
+                    if(_arrayStates.ContainsKey(symbol))
+                    {
+                        showArray = _arrayStates[symbol];
+                    }
+                    else
+                    {
+                        _arrayStates.Add(symbol, false);
+                    }
+                    EditorGUILayout.BeginVertical();
+
+                    EditorGUI.BeginChangeCheck();
+                    // Show Foldout Header
+                    showArray = EditorGUILayout.Foldout(showArray, symbol, true);
+                    // Save foldout state
+                    _arrayStates[symbol] = showArray;
+                    
+                    if(showArray)
+                    {
+                        EditorGUI.indentLevel++;
+                        int newSize = EditorGUILayout.IntField(
+                            "size:",
+                            valueArray != null && valueArray.Length > 0 ? valueArray.Length : 1
+                        );
+                        EditorGUILayout.Space();
+                        newSize = newSize >= 0 ? newSize : 0;
+                        Array.Resize(ref valueArray, newSize);
+                        
+                        if(valueArray != null && valueArray.Length > 0)
+                        {
+                            for(int i = 0; i < valueArray.Length; i++)
+                            {
+                                GUI.SetNextControlName("NodeField");
+                                valueArray[i] = EditorGUILayout.DoubleField(
+                                    $"{i}:",
+                                    valueArray.Length > i ? valueArray[i] : 0);
+                            }
+                        }
+
+                        EditorGUI.indentLevel--;
+                    }
+                    EditorGUILayout.EndVertical();
+                    if(EditorGUI.EndChangeCheck())
+                    {
+                        variableValue = valueArray;
+                        dirty = true;
+                    }
+                }
+                else if(variableType == typeof(decimal))
+                {
+                    decimal intValue = (decimal?)variableValue ?? default;
+                    EditorGUI.BeginChangeCheck();
+                    variableValue = (decimal)EditorGUILayout.DoubleField(symbol, (double)intValue);
+                    if(EditorGUI.EndChangeCheck())
+                    {
+                        dirty = true;
+                    }
+                }
+                else if(variableType == typeof(decimal[]))
+                {
+                    decimal[] valueArray = (decimal[])variableValue;
+                    GUI.SetNextControlName("NodeField");
+                    bool showArray = false;
+                    if(_arrayStates.ContainsKey(symbol))
+                    {
+                        showArray = _arrayStates[symbol];
+                    }
+                    else
+                    {
+                        _arrayStates.Add(symbol, false);
+                    }
+                    EditorGUILayout.BeginVertical();
+
+                    EditorGUI.BeginChangeCheck();
+                    // Show Foldout Header
+                    showArray = EditorGUILayout.Foldout(showArray, symbol, true);
+                    // Save foldout state
+                    _arrayStates[symbol] = showArray;
+                    
+                    if(showArray)
+                    {
+                        EditorGUI.indentLevel++;
+                        int newSize = EditorGUILayout.IntField(
+                            "size:",
+                            valueArray != null && valueArray.Length > 0 ? valueArray.Length : 1
+                        );
+                        EditorGUILayout.Space();
+                        newSize = newSize >= 0 ? newSize : 0;
+                        Array.Resize(ref valueArray, newSize);
+                        
+                        if(valueArray != null && valueArray.Length > 0)
+                        {
+                            for(int i = 0; i < valueArray.Length; i++)
+                            {
+                                GUI.SetNextControlName("NodeField");
+                                valueArray[i] = (decimal)EditorGUILayout.DoubleField(
+                                    $"{i}:",
+                                    valueArray.Length > i ? (double)valueArray[i] : 0);
+                            }
+                        }
+
+                        EditorGUI.indentLevel--;
+                    }
+                    EditorGUILayout.EndVertical();
+                    if(EditorGUI.EndChangeCheck())
+                    {
+                        variableValue = valueArray;
+                        dirty = true;
+                    }
+                }
                 else if(variableType == typeof(bool))
                 {
                     bool boolValue = (bool?)variableValue ?? default;
@@ -670,6 +1228,135 @@ namespace VRC.Udon.Editor.ProgramSources
                                 valueArray[i] = EditorGUILayout.Vector3Field(
                                     $"{i}:",
                                     valueArray.Length > i ? valueArray[i] : Vector3.zero);
+                            }
+                        }
+
+                        EditorGUI.indentLevel--;
+                    }
+                    EditorGUILayout.EndVertical();
+                    if(EditorGUI.EndChangeCheck())
+                    {
+                        variableValue = valueArray;
+                        dirty = true;
+                    }
+                }
+                else if(variableType == typeof(UnityEngine.Vector2Int))
+                {
+                    Vector2Int vector2IntValue = (Vector2Int?)variableValue ?? default;
+                    EditorGUI.BeginChangeCheck();
+                    Vector2 vector2Value = EditorGUILayout.Vector2Field(symbol, vector2IntValue);
+                    variableValue = new Vector2Int((int)vector2Value.x, (int)vector2Value.y);
+                    if(EditorGUI.EndChangeCheck())
+                    {
+                        dirty = true;
+                    }
+                }
+                else if(variableType == typeof(Vector2Int[]))
+                {
+                    Vector2Int[] valueArray = (Vector2Int[])variableValue;
+                    GUI.SetNextControlName("NodeField");
+                    bool showArray = false;
+                    if(_arrayStates.ContainsKey(symbol))
+                    {
+                        showArray = _arrayStates[symbol];
+                    }
+                    else
+                    {
+                        _arrayStates.Add(symbol, false);
+                    }
+                    EditorGUILayout.BeginVertical();
+
+                    EditorGUI.BeginChangeCheck();
+                    // Show Foldout Header
+                    showArray = EditorGUILayout.Foldout(showArray, symbol, true);
+                    // Save foldout state
+                    _arrayStates[symbol] = showArray;
+                    
+                    if(showArray)
+                    {
+                        EditorGUI.indentLevel++;
+                        int newSize = EditorGUILayout.IntField(
+                            "size:",
+                            valueArray != null && valueArray.Length > 0 ? valueArray.Length : 1
+                        );
+                        EditorGUILayout.Space();
+                        newSize = newSize >= 0 ? newSize : 0;
+                        Array.Resize(ref valueArray, newSize);
+                        
+                        if(valueArray != null && valueArray.Length > 0)
+                        {
+                            for(int i = 0; i < valueArray.Length; i++)
+                            {
+                                GUI.SetNextControlName("NodeField");
+                                Vector2 vector2Value = EditorGUILayout.Vector2Field(
+                                    $"{i}:",
+                                    valueArray.Length > i ? valueArray[i] : Vector2.zero);
+                                valueArray[i] = new Vector2Int((int)vector2Value.x, (int)vector2Value.y);
+                            }
+                        }
+
+                        EditorGUI.indentLevel--;
+                    }
+                    EditorGUILayout.EndVertical();
+                    if(EditorGUI.EndChangeCheck())
+                    {
+                        variableValue = valueArray;
+                        dirty = true;
+                    }
+                }
+                else if(variableType == typeof(UnityEngine.Vector3Int))
+                {
+                    Vector3Int vector3IntValue = (Vector3Int?)variableValue ?? default;
+                    EditorGUI.BeginChangeCheck();
+                    Vector3 vector3Value = EditorGUILayout.Vector3Field(symbol, vector3IntValue);
+                    variableValue = new Vector3Int((int)vector3Value.x, (int)vector3Value.y, (int)vector3Value.z);
+                    if(EditorGUI.EndChangeCheck())
+                    {
+                        dirty = true;
+                    }
+                }
+                else if(variableType == typeof(Vector3Int[]))
+                {
+                    Vector3Int[] valueArray = (Vector3Int[])variableValue;
+                    GUI.SetNextControlName("NodeField");
+                    bool showArray = false;
+                    if(_arrayStates.ContainsKey(symbol))
+                    {
+                        showArray = _arrayStates[symbol];
+                    }
+                    else
+                    {
+                        _arrayStates.Add(symbol, false);
+                    }
+                    EditorGUILayout.BeginVertical();
+
+                    EditorGUI.BeginChangeCheck();
+                    // Show Foldout Header
+                    showArray = EditorGUILayout.Foldout(showArray, symbol, true);
+                    // Save foldout state
+                    _arrayStates[symbol] = showArray;
+                    
+                    if(showArray)
+                    {
+                        EditorGUI.indentLevel++;
+                        int newSize = EditorGUILayout.IntField(
+                            "size:",
+                            valueArray != null && valueArray.Length > 0 ? valueArray.Length : 1
+                        );
+                        EditorGUILayout.Space();
+                        newSize = newSize >= 0 ? newSize : 0;
+                        Array.Resize(ref valueArray, newSize);
+                        
+                        if(valueArray != null && valueArray.Length > 0)
+                        {
+                            for(int i = 0; i < valueArray.Length; i++)
+                            {
+                                GUI.SetNextControlName("NodeField");
+                                Vector3 vector3Value = EditorGUILayout.Vector3Field(
+                                    $"{i}:",
+                                    valueArray.Length > i ? valueArray[i] : Vector3.zero);
+                                valueArray[i] = new Vector3Int((int)vector3Value.x, (int)vector3Value.y,
+                                    (int)vector3Value.z);
                             }
                         }
 

@@ -1,6 +1,5 @@
 ﻿using System.IO;
 using UnityEditor;
-using UnityEngine;
 
 namespace VRCSDK.SDK3.Editor
 {
@@ -8,24 +7,36 @@ namespace VRCSDK.SDK3.Editor
     public class SDK3ImportFix
     {
         private const string packageRuntimePluginsFolder = "Packages/com.vrchat.worlds/Runtime/VRCSDK/Plugins";
-        private const string SDK3_IMPORTS_FIXED = "SDK3ImportsFixed";
+        private const string legacyRuntimePluginsFolder = "Assets/VRCSDK/Plugins/";
+        private const string reloadPluginsKey = "ReloadPlugins";
 
         static SDK3ImportFix()
         {
-            // Only run once per project
-            string key = Path.Combine(Application.dataPath, SDK3_IMPORTS_FIXED);
-	        
-            if (EditorPrefs.HasKey(key))
-                return;
-
-            EditorPrefs.SetBool(key, true);
-            Run();
+            var reloadsUntilRun = SessionState.GetInt(reloadPluginsKey, 0);
+            if (reloadsUntilRun > -1)
+            {
+                reloadsUntilRun--;
+                if (reloadsUntilRun == 0)
+                {
+                    Run();
+                }
+                SessionState.SetInt(reloadPluginsKey, reloadsUntilRun);
+            }
         }
         
-        public static void Run(){
-            AssetDatabase.ImportAsset($"{packageRuntimePluginsFolder}/VRCSDK3.dll", ImportAssetOptions.ForceSynchronousImport);
-            AssetDatabase.ImportAsset($"{packageRuntimePluginsFolder}/VRCSDK3-Editor.dll", ImportAssetOptions.ForceSynchronousImport);
-            AssetDatabase.ImportPackage($"Packages/com.vrchat.worlds/Samples~/UdonExampleScene/SDK3.unitypackage", false);
+        [MenuItem("VRChat SDK/Reload Plugins")]
+        public static void Run()
+        {
+            if (Directory.Exists(packageRuntimePluginsFolder))
+            {
+                AssetDatabase.ImportAsset($"{packageRuntimePluginsFolder}/VRCSDK3.dll", ImportAssetOptions.ForceSynchronousImport);
+                AssetDatabase.ImportAsset($"{packageRuntimePluginsFolder}/VRCSDK3-Editor.dll", ImportAssetOptions.ForceSynchronousImport);
+            }
+            else if (Directory.Exists(legacyRuntimePluginsFolder))
+            {
+                AssetDatabase.ImportAsset($"{legacyRuntimePluginsFolder}/VRCSDK3.dll", ImportAssetOptions.ForceSynchronousImport);
+                AssetDatabase.ImportAsset($"{legacyRuntimePluginsFolder}/VRCSDK3-Editor.dll", ImportAssetOptions.ForceSynchronousImport);
+            }
         }
     }
 }

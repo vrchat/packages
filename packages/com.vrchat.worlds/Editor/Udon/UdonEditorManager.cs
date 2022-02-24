@@ -60,7 +60,9 @@ namespace VRC.Udon.Editor
 
         #region Private Fields
 
-        private readonly UdonEditorInterface _udonEditorInterface;
+        private Lazy<UdonEditorInterface> _udonEditorInterface;
+
+        private UdonEditorInterface UdonEditorInterface => _udonEditorInterface.Value;
 
         private readonly HashSet<AbstractUdonProgramSource> _programSourceRefreshQueue = new HashSet<AbstractUdonProgramSource>();
 
@@ -80,8 +82,19 @@ namespace VRC.Udon.Editor
 
         private UdonEditorManager()
         {
-            _udonEditorInterface = new UdonEditorInterface();
-            _udonEditorInterface.AddTypeResolver(new UdonBehaviourTypeResolver());
+            _udonEditorInterface = new Lazy<UdonEditorInterface>(() =>
+            {
+                var editorInterface = new UdonEditorInterface();
+                editorInterface.AddTypeResolver(new UdonBehaviourTypeResolver());
+
+                return editorInterface;
+            });
+            
+            // Async init the editor interface to avoid 1+ second delay added to assembly reload.
+            Task.Run(() =>
+            {
+                var _ = _udonEditorInterface.Value;
+            });
 
             EditorSceneManager.sceneOpened += OnSceneOpened;
             EditorSceneManager.sceneSaving += OnSceneSaving;
@@ -339,27 +352,27 @@ namespace VRC.Udon.Editor
 
         public IUdonVM ConstructUdonVM()
         {
-            return _udonEditorInterface.ConstructUdonVM();
+            return UdonEditorInterface.ConstructUdonVM();
         }
 
         public IUdonProgram Assemble(string assembly)
         {
-            return _udonEditorInterface.Assemble(assembly);
+            return UdonEditorInterface.Assemble(assembly);
         }
 
         public IUdonWrapper GetWrapper()
         {
-            return _udonEditorInterface.GetWrapper();
+            return UdonEditorInterface.GetWrapper();
         }
 
         public IUdonHeap ConstructUdonHeap()
         {
-            return _udonEditorInterface.ConstructUdonHeap();
+            return UdonEditorInterface.ConstructUdonHeap();
         }
 
         public IUdonHeap ConstructUdonHeap(uint heapSize)
         {
-            return _udonEditorInterface.ConstructUdonHeap(heapSize);
+            return UdonEditorInterface.ConstructUdonHeap(heapSize);
         }
 
         public string CompileGraph(
@@ -368,42 +381,42 @@ namespace VRC.Udon.Editor
             out Dictionary<string, (object value, Type type)> heapDefaultValues
         )
         {
-            return _udonEditorInterface.CompileGraph(graph, nodeRegistry, out linkedSymbols, out heapDefaultValues);
+            return UdonEditorInterface.CompileGraph(graph, nodeRegistry, out linkedSymbols, out heapDefaultValues);
         }
 
         public Type GetTypeFromTypeString(string typeString)
         {
-            return _udonEditorInterface.GetTypeFromTypeString(typeString);
+            return UdonEditorInterface.GetTypeFromTypeString(typeString);
         }
 
         public void AddTypeResolver(IUAssemblyTypeResolver typeResolver)
         {
-            _udonEditorInterface.AddTypeResolver(typeResolver);
+            UdonEditorInterface.AddTypeResolver(typeResolver);
         }
 
         public string[] DisassembleProgram(IUdonProgram program)
         {
-            return _udonEditorInterface.DisassembleProgram(program);
+            return UdonEditorInterface.DisassembleProgram(program);
         }
 
         public string DisassembleInstruction(IUdonProgram program, ref uint offset)
         {
-            return _udonEditorInterface.DisassembleInstruction(program, ref offset);
+            return UdonEditorInterface.DisassembleInstruction(program, ref offset);
         }
 
         public UdonNodeDefinition GetNodeDefinition(string identifier)
         {
-            return _udonEditorInterface.GetNodeDefinition(identifier);
+            return UdonEditorInterface.GetNodeDefinition(identifier);
         }
 
         public IEnumerable<UdonNodeDefinition> GetNodeDefinitions()
         {
-            return _udonEditorInterface.GetNodeDefinitions();
+            return UdonEditorInterface.GetNodeDefinitions();
         }
 
         public Dictionary<string, INodeRegistry> GetNodeRegistries()
         {
-            return _udonEditorInterface.GetNodeRegistries();
+            return UdonEditorInterface.GetNodeRegistries();
         }
 
         private IReadOnlyDictionary<string, ReadOnlyCollection<KeyValuePair<string, INodeRegistry>>> _topRegistries;
@@ -493,7 +506,7 @@ namespace VRC.Udon.Editor
 
         public IEnumerable<UdonNodeDefinition> GetNodeDefinitions(string baseIdentifier)
         {
-            return _udonEditorInterface.GetNodeDefinitions(baseIdentifier);
+            return UdonEditorInterface.GetNodeDefinitions(baseIdentifier);
         }
 
         #endregion

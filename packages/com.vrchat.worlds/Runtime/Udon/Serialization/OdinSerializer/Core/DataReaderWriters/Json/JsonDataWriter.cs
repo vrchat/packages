@@ -676,6 +676,8 @@ namespace VRC.Udon.Serialization.OdinSerializer
                     continue;
                 }
 
+                this.EnsureBufferSpace(2);
+
                 // Escape any characters that need to be escaped, default to no escape
                 switch (c)
                 {

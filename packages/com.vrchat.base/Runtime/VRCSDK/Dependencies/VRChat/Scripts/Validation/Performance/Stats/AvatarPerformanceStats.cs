@@ -1,6 +1,9 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using UnityEngine;
 
 namespace VRC.SDKBase.Validation.Performance.Stats
@@ -44,6 +47,11 @@ namespace VRC.SDKBase.Validation.Performance.Stats
         #region Private Fields
 
         private readonly PerformanceRating[] _performanceRatingCache;
+
+        private static readonly ImmutableArray<AvatarPerformanceCategory> _performanceCategories = Enum.GetValues(typeof(AvatarPerformanceCategory))
+            .Cast<AvatarPerformanceCategory>()
+            .ToImmutableArray();
+
         private static readonly Dictionary<AvatarPerformanceCategory, string> _performanceCategoryDisplayNames = new Dictionary<AvatarPerformanceCategory, string>
         {
             {AvatarPerformanceCategory.PolyCount, "Polygons"},
@@ -102,11 +110,11 @@ namespace VRC.SDKBase.Validation.Performance.Stats
 
         private static string GetPlatformPerformanceStatLevels()
         {
-#if UNITY_ANDROID
+            #if UNITY_ANDROID
             return "Validation/Performance/StatsLevels/Quest/AvatarPerformanceStatLevels_Quest";
-#else
+            #else
             return "Validation/Performance/StatsLevels/Windows/AvatarPerformanceStatLevels_Windows";
-#endif
+            #endif
         }
 
         #endregion
@@ -157,6 +165,11 @@ namespace VRC.SDKBase.Validation.Performance.Stats
             }
         }
 
+        public Snapshot GetSnapshot()
+        {
+            return new Snapshot(this);
+        }
+
         public PerformanceRating GetPerformanceRatingForCategory(AvatarPerformanceCategory perfCategory)
         {
             if(_performanceRatingCache[(int)perfCategory] == PerformanceRating.None)
@@ -174,7 +187,7 @@ namespace VRC.SDKBase.Validation.Performance.Stats
                 _performanceRatingCache[i] = PerformanceRating.None;
             }
 
-            foreach(AvatarPerformanceCategory perfCategory in Enum.GetValues(typeof(AvatarPerformanceCategory)))
+            foreach(AvatarPerformanceCategory perfCategory in _performanceCategories)
             {
                 if(perfCategory == AvatarPerformanceCategory.None ||
                    perfCategory == AvatarPerformanceCategory.AvatarPerformanceCategoryCount)
@@ -238,7 +251,7 @@ namespace VRC.SDKBase.Validation.Performance.Stats
                 {
                     PerformanceRating maxRating = PerformanceRating.None;
 
-                    foreach(AvatarPerformanceCategory category in Enum.GetValues(typeof(AvatarPerformanceCategory)))
+                    foreach(AvatarPerformanceCategory category in _performanceCategories)
                     {
                         if(category == AvatarPerformanceCategory.None ||
                            category == AvatarPerformanceCategory.Overall ||
@@ -460,6 +473,7 @@ namespace VRC.SDKBase.Validation.Performance.Stats
                     {
                         return PerformanceRating.None;
                     }
+
                     return CalculatePerformanceRating((x, y) => x.clothCount.GetValueOrDefault() - y.clothCount);
                 }
                 case AvatarPerformanceCategory.ClothMaxVertices:
@@ -468,6 +482,7 @@ namespace VRC.SDKBase.Validation.Performance.Stats
                     {
                         return PerformanceRating.None;
                     }
+
                     return CalculatePerformanceRating((x, y) => x.clothMaxVertices.GetValueOrDefault() - y.clothMaxVertices);
                 }
                 case AvatarPerformanceCategory.PhysicsColliderCount:
@@ -512,7 +527,7 @@ namespace VRC.SDKBase.Validation.Performance.Stats
                 }
             }
         }
-        
+
         private PerformanceRating CalculatePerformanceRating(ComparePerformanceStatsDelegate compareFn)
         {
             if(compareFn(this, _performanceStatsLevelSet.excellent) <= 0)
@@ -582,6 +597,159 @@ namespace VRC.SDKBase.Validation.Performance.Stats
             }
 
             return sb.ToString();
+        }
+
+        // Mirror the AvatarPerformanceStats class even if some aren't used right now.
+        [SuppressMessage("ReSharper", "MemberCanBePrivate.Global")]
+        [SuppressMessage("ReSharper", "NotAccessedField.Global")]
+        public readonly struct Snapshot
+        {
+            public readonly string avatarName;
+
+            // Stats
+            public readonly int? polyCount;
+            public readonly Bounds? aabb;
+            public readonly int? skinnedMeshCount;
+            public readonly int? meshCount;
+            public readonly int? materialCount;
+            public readonly int? animatorCount;
+            public readonly int? boneCount;
+            public readonly int? lightCount;
+            public readonly int? particleSystemCount;
+            public readonly int? particleTotalCount;
+            public readonly int? particleMaxMeshPolyCount;
+            public readonly bool? particleTrailsEnabled;
+            public readonly bool? particleCollisionEnabled;
+            public readonly int? trailRendererCount;
+            public readonly int? lineRendererCount;
+            public readonly int? dynamicBoneComponentCount;
+            public readonly int? dynamicBoneSimulatedBoneCount;
+            public readonly int? dynamicBoneColliderCount;
+            public readonly int? dynamicBoneCollisionCheckCount; // number of collider simulated bones excluding the root multiplied by the number of colliders
+            public readonly int? clothCount;
+            public readonly int? clothMaxVertices;
+            public readonly int? physicsColliderCount;
+            public readonly int? physicsRigidbodyCount;
+            public readonly int? audioSourceCount;
+            public readonly float? downloadSize;
+
+            // Ratings
+            public readonly PerformanceRating overallRating;
+            public readonly PerformanceRating polyCountRating;
+            public readonly PerformanceRating aabbRating;
+            public readonly PerformanceRating skinnedMeshCountRating;
+            public readonly PerformanceRating meshCountRating;
+            public readonly PerformanceRating materialCountRating;
+            public readonly PerformanceRating animatorCountRating;
+            public readonly PerformanceRating boneCountRating;
+            public readonly PerformanceRating lightCountRating;
+            public readonly PerformanceRating particleSystemCountRating;
+            public readonly PerformanceRating particleTotalCountRating;
+            public readonly PerformanceRating particleMaxMeshPolyCountRating;
+            public readonly PerformanceRating particleTrailsEnabledRating;
+            public readonly PerformanceRating particleCollisionEnabledRating;
+            public readonly PerformanceRating trailRendererCountRating;
+            public readonly PerformanceRating lineRendererCountRating;
+            public readonly PerformanceRating dynamicBoneComponentCountRating;
+            public readonly PerformanceRating dynamicBoneSimulatedBoneCountRating;
+            public readonly PerformanceRating dynamicBoneColliderCountRating;
+            public readonly PerformanceRating dynamicBoneCollisionCheckCountRating;
+            public readonly PerformanceRating clothCountRating;
+            public readonly PerformanceRating clothMaxVerticesRating;
+            public readonly PerformanceRating physicsColliderCountRating;
+            public readonly PerformanceRating physicsRigidbodyCountRating;
+            public readonly PerformanceRating audioSourceCountRating;
+            public readonly PerformanceRating downloadSizeRating;
+
+            public Snapshot(AvatarPerformanceStats avatarPerformanceStats)
+            {
+                avatarName = avatarPerformanceStats.avatarName;
+                polyCount = avatarPerformanceStats.polyCount;
+                aabb = avatarPerformanceStats.aabb;
+                skinnedMeshCount = avatarPerformanceStats.skinnedMeshCount;
+                meshCount = avatarPerformanceStats.meshCount;
+                materialCount = avatarPerformanceStats.materialCount;
+                animatorCount = avatarPerformanceStats.animatorCount;
+                boneCount = avatarPerformanceStats.boneCount;
+                lightCount = avatarPerformanceStats.lightCount;
+                particleSystemCount = avatarPerformanceStats.particleSystemCount;
+                particleTotalCount = avatarPerformanceStats.particleTotalCount;
+                particleMaxMeshPolyCount = avatarPerformanceStats.particleMaxMeshPolyCount;
+                particleTrailsEnabled = avatarPerformanceStats.particleTrailsEnabled;
+                particleCollisionEnabled = avatarPerformanceStats.particleCollisionEnabled;
+                trailRendererCount = avatarPerformanceStats.trailRendererCount;
+                lineRendererCount = avatarPerformanceStats.lineRendererCount;
+                dynamicBoneComponentCount = avatarPerformanceStats.dynamicBoneComponentCount;
+                dynamicBoneSimulatedBoneCount = avatarPerformanceStats.dynamicBoneSimulatedBoneCount;
+                dynamicBoneColliderCount = avatarPerformanceStats.dynamicBoneColliderCount;
+                dynamicBoneCollisionCheckCount = avatarPerformanceStats.dynamicBoneCollisionCheckCount;
+                clothCount = avatarPerformanceStats.clothCount;
+                clothMaxVertices = avatarPerformanceStats.clothMaxVertices;
+                physicsColliderCount = avatarPerformanceStats.physicsColliderCount;
+                physicsRigidbodyCount = avatarPerformanceStats.physicsRigidbodyCount;
+                audioSourceCount = avatarPerformanceStats.audioSourceCount;
+                downloadSize = avatarPerformanceStats.downloadSize;
+
+                overallRating = avatarPerformanceStats.GetPerformanceRatingForCategory(AvatarPerformanceCategory.Overall);
+                polyCountRating = avatarPerformanceStats.GetPerformanceRatingForCategory(AvatarPerformanceCategory.PolyCount);
+                aabbRating = avatarPerformanceStats.GetPerformanceRatingForCategory(AvatarPerformanceCategory.AABB);
+                skinnedMeshCountRating = avatarPerformanceStats.GetPerformanceRatingForCategory(AvatarPerformanceCategory.SkinnedMeshCount);
+                meshCountRating = avatarPerformanceStats.GetPerformanceRatingForCategory(AvatarPerformanceCategory.MeshCount);
+                materialCountRating = avatarPerformanceStats.GetPerformanceRatingForCategory(AvatarPerformanceCategory.MaterialCount);
+                animatorCountRating = avatarPerformanceStats.GetPerformanceRatingForCategory(AvatarPerformanceCategory.AnimatorCount);
+                boneCountRating = avatarPerformanceStats.GetPerformanceRatingForCategory(AvatarPerformanceCategory.BoneCount);
+                lightCountRating = avatarPerformanceStats.GetPerformanceRatingForCategory(AvatarPerformanceCategory.LightCount);
+                particleSystemCountRating = avatarPerformanceStats.GetPerformanceRatingForCategory(AvatarPerformanceCategory.ParticleSystemCount);
+                particleTotalCountRating = avatarPerformanceStats.GetPerformanceRatingForCategory(AvatarPerformanceCategory.ParticleTotalCount);
+                particleMaxMeshPolyCountRating = avatarPerformanceStats.GetPerformanceRatingForCategory(AvatarPerformanceCategory.ParticleMaxMeshPolyCount);
+                particleTrailsEnabledRating = avatarPerformanceStats.GetPerformanceRatingForCategory(AvatarPerformanceCategory.ParticleTrailsEnabled);
+                particleCollisionEnabledRating = avatarPerformanceStats.GetPerformanceRatingForCategory(AvatarPerformanceCategory.ParticleCollisionEnabled);
+                trailRendererCountRating = avatarPerformanceStats.GetPerformanceRatingForCategory(AvatarPerformanceCategory.TrailRendererCount);
+                lineRendererCountRating = avatarPerformanceStats.GetPerformanceRatingForCategory(AvatarPerformanceCategory.LineRendererCount);
+                dynamicBoneComponentCountRating = avatarPerformanceStats.GetPerformanceRatingForCategory(AvatarPerformanceCategory.DynamicBoneComponentCount);
+                dynamicBoneSimulatedBoneCountRating = avatarPerformanceStats.GetPerformanceRatingForCategory(AvatarPerformanceCategory.DynamicBoneSimulatedBoneCount);
+                dynamicBoneColliderCountRating = avatarPerformanceStats.GetPerformanceRatingForCategory(AvatarPerformanceCategory.DynamicBoneColliderCount);
+                dynamicBoneCollisionCheckCountRating = avatarPerformanceStats.GetPerformanceRatingForCategory(AvatarPerformanceCategory.DynamicBoneCollisionCheckCount);
+                clothCountRating = avatarPerformanceStats.GetPerformanceRatingForCategory(AvatarPerformanceCategory.ClothCount);
+                clothMaxVerticesRating = avatarPerformanceStats.GetPerformanceRatingForCategory(AvatarPerformanceCategory.ClothMaxVertices);
+                physicsColliderCountRating = avatarPerformanceStats.GetPerformanceRatingForCategory(AvatarPerformanceCategory.PhysicsColliderCount);
+                physicsRigidbodyCountRating = avatarPerformanceStats.GetPerformanceRatingForCategory(AvatarPerformanceCategory.PhysicsRigidbodyCount);
+                audioSourceCountRating = avatarPerformanceStats.GetPerformanceRatingForCategory(AvatarPerformanceCategory.AudioSourceCount);
+                downloadSizeRating = avatarPerformanceStats.GetPerformanceRatingForCategory(AvatarPerformanceCategory.DownloadSize);
+            }
+
+            public override string ToString()
+            {
+                System.Text.StringBuilder sb = new System.Text.StringBuilder(1024);
+                sb.AppendFormat("Avatar Name: {0}\n", avatarName);
+                sb.AppendFormat("Overall Performance: {0}\n", overallRating);
+                sb.AppendFormat("Poly Count: {0}\n", polyCount);
+                sb.AppendFormat("Bounds: {0}\n", aabb.ToString());
+                sb.AppendFormat("Skinned Mesh Count: {0}\n", skinnedMeshCount);
+                sb.AppendFormat("Mesh Count: {0}\n", meshCount);
+                sb.AppendFormat("Material Count: {0}\n", materialCount);
+                sb.AppendFormat("Animator Count: {0}\n", animatorCount);
+                sb.AppendFormat("Bone Count: {0}\n", boneCount);
+                sb.AppendFormat("Light Count: {0}\n", lightCount);
+                sb.AppendFormat("Particle System Count: {0}\n", particleSystemCount);
+                sb.AppendFormat("Particle Total Count: {0}\n", particleTotalCount);
+                sb.AppendFormat("Particle Max Mesh Poly Count: {0}\n", particleMaxMeshPolyCount);
+                sb.AppendFormat("Particle Trails Enabled: {0}\n", particleTrailsEnabled);
+                sb.AppendFormat("Particle Collision Enabled: {0}\n", particleCollisionEnabled);
+                sb.AppendFormat("Trail Renderer Count: {0}\n", trailRendererCount);
+                sb.AppendFormat("Line Renderer Count: {0}\n", lineRendererCount);
+                sb.AppendFormat("Dynamic Bone Component Count: {0}\n", dynamicBoneComponentCount);
+                sb.AppendFormat("Dynamic Bone Simulated Bone Count: {0}\n", dynamicBoneSimulatedBoneCount);
+                sb.AppendFormat("Dynamic Bone Collider Count: {0}\n", dynamicBoneColliderCount);
+                sb.AppendFormat("Dynamic Bone Collision Check Count: {0}\n", dynamicBoneCollisionCheckCount);
+                sb.AppendFormat("Cloth Count: {0}\n", clothCount);
+                sb.AppendFormat("Cloth Max Vertices: {0}\n", clothMaxVertices);
+                sb.AppendFormat("Physics Collider Count: {0}\n", physicsColliderCount);
+                sb.AppendFormat("Physics Rigidbody Count: {0}\n", physicsRigidbodyCount);
+                sb.AppendFormat("Download Size: {0} MB\n", downloadSize);
+            
+                return sb.ToString();
+            }
         }
 
         #endregion

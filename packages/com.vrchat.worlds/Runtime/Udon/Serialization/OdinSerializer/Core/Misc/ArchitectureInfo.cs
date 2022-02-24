@@ -16,9 +16,11 @@
 // </copyright>
 //-----------------------------------------------------------------------
 
+#pragma warning disable 618 // VRC
 namespace VRC.Udon.Serialization.OdinSerializer
 {
     using System;
+    using UnityEngine;
 
     /// <summary>
     /// This class gathers info about the current architecture for the purpose of determinining
@@ -26,7 +28,7 @@ namespace VRC.Udon.Serialization.OdinSerializer
     /// </summary>
     public unsafe static class ArchitectureInfo
     {
-        public static readonly bool Architecture_Supports_Unaligned_Float32_Reads;
+        public static bool Architecture_Supports_Unaligned_Float32_Reads;
 
         /// <summary>
         /// This will be false on some ARM architectures, such as ARMv7.
@@ -43,9 +45,36 @@ namespace VRC.Udon.Serialization.OdinSerializer
 #if UNITY_EDITOR
             Architecture_Supports_Unaligned_Float32_Reads = true;
             Architecture_Supports_All_Unaligned_ReadWrites = true;
-            return;
+#else
+            // At runtime, we are going to be very pessimistic and assume the
+            // worst until we get more info about the platform we are on.
+            Architecture_Supports_Unaligned_Float32_Reads = false;
+            Architecture_Supports_All_Unaligned_ReadWrites = false;
+
+            Debug.Log("Odin Serializer ArchitectureInfo initialization with defaults (all unaligned read/writes disabled).");
 #endif
 #pragma warning disable 0162 // Unreachable Code Detected
+        }
+
+        internal static void SetRuntimePlatform(RuntimePlatform platform)
+        {
+            // Experience indicates that unaligned read/write support is pretty spotty and sometimes causes subtle bugs even when it appears to work,
+            // so to be safe, we only enable it for platforms where we are certain that it will work.
+
+            switch (platform)
+            {
+                case RuntimePlatform.LinuxPlayer:
+                case RuntimePlatform.WindowsPlayer:
+                case RuntimePlatform.OSXPlayer:
+                case RuntimePlatform.PS3:
+                case RuntimePlatform.PS4:
+                case RuntimePlatform.XBOX360:
+                case RuntimePlatform.XboxOne:
+                case RuntimePlatform.WebGLPlayer:
+                case RuntimePlatform.WSAPlayerX64:
+                case RuntimePlatform.WSAPlayerX86:
+                case RuntimePlatform.WiiU:
+                    
             try
             {
                 // Try to perform some unaligned float reads.
@@ -64,7 +93,7 @@ namespace VRC.Udon.Serialization.OdinSerializer
                 fixed (byte* test = testArray)
                 {
                     // Even if test is weirdly aligned in the stack, trying four differently aligned 
-                    // reads will definitely have an unligned read or two in there.
+                    // reads will definitely have an unaligned read or two in there.
 
                     // If all of these reads work, we are safe. We do it this way instead of just having one read,
                     // because as far as I have been able to determine, there are no guarantees about the alignment 
@@ -82,27 +111,22 @@ namespace VRC.Udon.Serialization.OdinSerializer
             {
                 Architecture_Supports_Unaligned_Float32_Reads = false;
             }
-        }
 
-        internal static void SetIsOnAndroid(string architecture)
+                    if (Architecture_Supports_Unaligned_Float32_Reads)
         {
-            if (!Architecture_Supports_Unaligned_Float32_Reads || architecture == "armv7l" || architecture == "armv7" || IntPtr.Size == 4)
-            {
-                Architecture_Supports_All_Unaligned_ReadWrites = false;
+                        Debug.Log("Odin Serializer detected whitelisted runtime platform " + platform + " and memory read test succeeded; enabling all unaligned memory read/writes.");
+                        Architecture_Supports_All_Unaligned_ReadWrites = true;
             }
             else
             {
-                Architecture_Supports_All_Unaligned_ReadWrites = true;
+                        Debug.Log("Odin Serializer detected whitelisted runtime platform " + platform + " and memory read test failed; disabling all unaligned memory read/writes.");
             }
-
-            UnityEngine.Debug.Log("OdinSerializer detected Android architecture '" + architecture + "' for determining unaligned read/write capabilities. Unaligned read/write support: all=" + Architecture_Supports_All_Unaligned_ReadWrites + ", float=" + Architecture_Supports_Unaligned_Float32_Reads + "");
-        }
-
-        internal static void SetIsNotOnAndroid()
-        {
-            if (Architecture_Supports_Unaligned_Float32_Reads)
-            {
-                Architecture_Supports_All_Unaligned_ReadWrites = true;
+                    break;
+                default:
+                    Architecture_Supports_Unaligned_Float32_Reads = false;
+                    Architecture_Supports_All_Unaligned_ReadWrites = false;
+                    Debug.Log("Odin Serializer detected non-white-listed runtime platform " + platform + "; disabling all unaligned memory read/writes.");
+                    break;
             }
         }
     }

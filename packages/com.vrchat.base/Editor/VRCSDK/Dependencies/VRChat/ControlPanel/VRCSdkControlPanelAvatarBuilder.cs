@@ -602,9 +602,9 @@ namespace VRC.SDKBase.Editor
             bool hasHead;
             bool hasFeet;
             bool hasHands;
-            #pragma warning disable CS0168 // only used in SDK2, shows warning for unused variable in SDK3
+#if VRC_SDK_VRCSDK2
             bool hasThreeFingers;
-            #pragma warning restore CS0168
+#endif
             bool correctSpineHierarchy;
             bool correctLeftArmHierarchy;
             bool correctRightArmHierarchy;

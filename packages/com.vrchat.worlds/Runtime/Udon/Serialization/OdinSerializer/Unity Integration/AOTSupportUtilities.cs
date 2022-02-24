@@ -44,7 +44,7 @@ namespace VRC.Udon.Serialization.OdinSerializer.Editor
         /// <param name="scanResources">Whether to scan the project's resources.</param>
         /// <param name="resourcesToScan">An optional list of the resource paths to scan. Only has an effect if the scanResources argument is true. All the resources will be scanned if null.</param>
         /// <returns>true if the scan succeeded, false if the scan failed or was cancelled</returns>
-        public static bool ScanProjectForSerializedTypes(out List<Type> serializedTypes, bool scanBuildScenes = true, bool scanAllAssetBundles = true, bool scanPreloadedAssets = true, bool scanResources = true, List<string> resourcesToScan = null)
+        public static bool ScanProjectForSerializedTypes(out List<Type> serializedTypes, bool scanBuildScenes = true, bool scanAllAssetBundles = true, bool scanPreloadedAssets = true, bool scanResources = true, List<string> resourcesToScan = null, bool scanAddressables = true)
         {
             using (var scanner = new AOTSupportScanner())
             {
@@ -78,6 +78,13 @@ namespace VRC.Udon.Serialization.OdinSerializer.Editor
                     return false;
                 }
         
+                if (scanAddressables && !scanner.ScanAllAddressables(includeAssetDependencies: true, showProgressBar: true))
+                {
+                    Debug.Log("Project scan canceled while scanning addressable assets and their dependencies.");
+                    serializedTypes = null;
+                    return false;
+                }
+
                 serializedTypes = scanner.EndScan();
             }
             return true;
@@ -100,10 +107,17 @@ namespace VRC.Udon.Serialization.OdinSerializer.Editor
             assembly.SetCustomAttribute(new CustomAttributeBuilder(typeof(EmittedAssemblyAttribute).GetConstructor(new Type[0]), new object[0]));
             
             // VRChat Edit: Add the UnityAPICompatibilityVersion Attribute for the current version of Unity to skip API Updating.
+            #if UNITY_2019
+            assembly.SetCustomAttribute(new CustomAttributeBuilder(
+                typeof(UnityAPICompatibilityVersionAttribute).GetConstructor(new[]{typeof(string), typeof(bool)}), 
+                new object[]{Application.unityVersion, true})
+            );
+            #else
             assembly.SetCustomAttribute(new CustomAttributeBuilder(
                 typeof(UnityAPICompatibilityVersionAttribute).GetConstructor(new[]{typeof(string)}), 
                 new object[]{Application.unityVersion})
             );
+            #endif
 
             // The following is a fix for Unity's crappy Mono runtime that doesn't know how to do this sort
             //  of stuff properly
@@ -353,6 +367,12 @@ namespace VRC.Udon.Serialization.OdinSerializer.Editor
 
                 // Disable for all standalones
                 pluginImporter.SetCompatibleWithPlatform(BuildTarget.StandaloneLinux64, false);
+
+                if (!UnityVersion.IsVersionOrGreater(2019, 2))
+                {
+                    pluginImporter.SetCompatibleWithPlatform((BuildTarget)17, false);       // StandaloneLinux
+                    pluginImporter.SetCompatibleWithPlatform((BuildTarget)25, false);       // StandaloneLinuxUniversal
+                }
 
                 // StandaloneOSXUniversal (<= 2017.2) / StandaloneOSX (>= 2017.3)
                 pluginImporter.SetCompatibleWithPlatform((BuildTarget)2, false);
