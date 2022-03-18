@@ -1,1 +1,0 @@
-com.vrchat.avatars
