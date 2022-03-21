@@ -1,10 +1,9 @@
 ﻿using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using VRC.Core;
 using VRC.SDK3.Components;
-using VRCSDK.SDK3.Editor;
+using System.IO;
 
 namespace VRCSDK.SDK3.Editor
 {
@@ -13,11 +12,10 @@ namespace VRCSDK.SDK3.Editor
     {
         private const string packageRuntimePluginsFolder = "Packages/com.vrchat.worlds/Runtime/VRCSDK/Plugins";
         private const string legacyRuntimePluginsFolder = "Assets/VRCSDK/Plugins/";
-        private const string reloadPluginsKey = "ReloadPlugins";
 
         static SDK3ImportFix()
         {
-            EditorSceneManager.sceneOpened += ()=> Check;
+            EditorSceneManager.sceneOpened += (scene, mode) => Check();
             Check();
         }
         
