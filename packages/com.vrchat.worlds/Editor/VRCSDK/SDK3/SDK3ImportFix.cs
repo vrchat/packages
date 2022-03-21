@@ -12,15 +12,20 @@ namespace VRCSDK.SDK3.Editor
 
         static SDK3ImportFix()
         {
-            var reloadsUntilRun = SessionState.GetInt(reloadPluginsKey, 0);
-            if (reloadsUntilRun > -1)
+            EditorSceneManager.sceneOpened += ()=> Check;
+            Check();
+        }
+        
+        private static void Check()
+        {
+            var worldGameObject = Object.FindObjectOfType<PipelineManager>();
+            if (worldGameObject != null)
             {
-                reloadsUntilRun--;
-                if (reloadsUntilRun == 0)
+                var descriptor = Object.FindObjectOfType<VRCSceneDescriptor>();
+                if (descriptor == null)
                 {
                     Run();
                 }
-                SessionState.SetInt(reloadPluginsKey, reloadsUntilRun);
             }
         }
         
