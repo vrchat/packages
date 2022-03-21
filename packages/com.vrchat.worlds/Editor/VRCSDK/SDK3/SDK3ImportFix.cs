@@ -1,5 +1,10 @@
-﻿using System.IO;
-using UnityEditor;
+﻿using UnityEditor;
+using UnityEditor.SceneManagement;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+using VRC.Core;
+using VRC.SDK3.Components;
+using VRCSDK.SDK3.Editor;
 
 namespace VRCSDK.SDK3.Editor
 {
