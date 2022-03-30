@@ -62,7 +62,14 @@ public class VRCSdk3Analysis
     public static PluginImporter GetImporterForAssemblyString(string assembly)
     {
 #if VRCUPM
-        return AssetImporter.GetAtPath($"Packages/com.vrchat.{assembly.ToLower()}/Runtime/VRCSDK/Plugins/{assembly}.dll") as PluginImporter;
+        switch (assembly)
+        {
+            case "VRCSDK3":
+                return AssetImporter.GetAtPath($"Packages/com.vrchat.worlds/Runtime/VRCSDK/Plugins/{assembly}.dll") as PluginImporter;
+            case "VRCSDK3A":
+                return AssetImporter.GetAtPath($"Packages/com.vrchat.avatars/Runtime/VRCSDK/Plugins/{assembly}.dll") as PluginImporter;
+        }
+        return null;
 #else
         return AssetImporter.GetAtPath($"Assets/VRCSDK/Plugins/{assembly}.dll") as PluginImporter;
 #endif
