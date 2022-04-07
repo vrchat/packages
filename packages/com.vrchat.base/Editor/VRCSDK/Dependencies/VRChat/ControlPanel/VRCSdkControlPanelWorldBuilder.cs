@@ -390,41 +390,41 @@ namespace VRC.SDKBase.Editor
                 );
             }
 
-            // AudioSource[] audioSources = Object.FindObjectsOfType<AudioSource>();
-            // foreach (AudioSource a in audioSources)
-            // {
-            //     if (a.GetComponent<ONSPAudioSource>() != null)
-            //     {
-            //         _builder.OnGUIWarning(scene,
-            //             "Found audio source(s) using ONSP, this is deprecated. Press 'fix' to convert to VRC_SpatialAudioSource.",
-            //             delegate { Selection.activeObject = a.gameObject; },
-            //             delegate
-            //             {
-            //                 Selection.activeObject = a.gameObject;
-            //                 AutoAddSpatialAudioComponents.ConvertONSPAudioSource(a);
-            //             }
-            //         );
-            //         break;
-            //     }
-            //     else if (a.GetComponent<VRC_SpatialAudioSource>() == null)
-            //     {
-            //         string msg =
-            //             "Found 3D audio source with no VRC Spatial Audio component, this is deprecated. Press 'fix' to add a VRC_SpatialAudioSource.";
-            //         if (IsAudioSource2D(a))
-            //             msg =
-            //                 "Found 2D audio source with no VRC Spatial Audio component, this is deprecated. Press 'fix' to add a (disabled) VRC_SpatialAudioSource.";
-            //
-            //         _builder.OnGUIWarning(scene, msg,
-            //             delegate { Selection.activeObject = a.gameObject; },
-            //             delegate
-            //             {
-            //                 Selection.activeObject = a.gameObject;
-            //                 AutoAddSpatialAudioComponents.AddVRCSpatialToBareAudioSource(a);
-            //             }
-            //         );
-            //         break;
-            //     }
-            // }
+            AudioSource[] audioSources = Object.FindObjectsOfType<AudioSource>();
+            foreach (AudioSource a in audioSources)
+            {
+                if (a.GetComponent<ONSPAudioSource>() != null)
+                {
+                    _builder.OnGUIWarning(scene,
+                        "Found audio source(s) using ONSP, this is deprecated. Press 'fix' to convert to VRC_SpatialAudioSource.",
+                        delegate { Selection.activeObject = a.gameObject; },
+                        delegate
+                        {
+                            Selection.activeObject = a.gameObject;
+                            AutoAddSpatialAudioComponents.ConvertONSPAudioSource(a);
+                        }
+                    );
+                    break;
+                }
+                else if (a.GetComponent<VRC_SpatialAudioSource>() == null)
+                {
+                    string msg =
+                        "Found 3D audio source with no VRC Spatial Audio component, this is deprecated. Press 'fix' to add a VRC_SpatialAudioSource.";
+                    if (IsAudioSource2D(a))
+                        msg =
+                            "Found 2D audio source with no VRC Spatial Audio component, this is deprecated. Press 'fix' to add a (disabled) VRC_SpatialAudioSource.";
+            
+                    _builder.OnGUIWarning(scene, msg,
+                        delegate { Selection.activeObject = a.gameObject; },
+                        delegate
+                        {
+                            Selection.activeObject = a.gameObject;
+                            AutoAddSpatialAudioComponents.AddVRCSpatialToBareAudioSource(a);
+                        }
+                    );
+                    break;
+                }
+            }
 
             if (VRCSdkControlPanel.HasSubstances())
             {
