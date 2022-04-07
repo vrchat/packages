@@ -1,5 +1,9 @@
-﻿using System.IO;
-using UnityEditor;
+﻿using UnityEditor;
+using UnityEditor.SceneManagement;
+using UnityEngine;
+using VRC.Core;
+using VRC.SDK3.Components;
+using System.IO;
 
 namespace VRCSDK.SDK3.Editor
 {
@@ -8,19 +12,23 @@ namespace VRCSDK.SDK3.Editor
     {
         private const string packageRuntimePluginsFolder = "Packages/com.vrchat.worlds/Runtime/VRCSDK/Plugins";
         private const string legacyRuntimePluginsFolder = "Assets/VRCSDK/Plugins/";
-        private const string reloadPluginsKey = "ReloadPlugins";
 
         static SDK3ImportFix()
         {
-            var reloadsUntilRun = SessionState.GetInt(reloadPluginsKey, 0);
-            if (reloadsUntilRun > -1)
+            EditorSceneManager.sceneOpened += (scene, mode) => Check();
+            Check();
+        }
+        
+        private static void Check()
+        {
+            var worldGameObject = Object.FindObjectOfType<PipelineManager>();
+            if (worldGameObject != null)
             {
-                reloadsUntilRun--;
-                if (reloadsUntilRun == 0)
+                var descriptor = Object.FindObjectOfType<VRCSceneDescriptor>();
+                if (descriptor == null)
                 {
                     Run();
                 }
-                SessionState.SetInt(reloadPluginsKey, reloadsUntilRun);
             }
         }
         

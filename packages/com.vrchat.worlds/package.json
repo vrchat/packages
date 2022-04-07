@@ -1,7 +1,7 @@
 {
 	"name" : "com.vrchat.worlds",
 	"displayName" : "VRChat SDK - Worlds",
-	"version" : "3.0.1",
+	"version" : "3.0.2",
 	"unity" : "2019.4",
 	"description" : "Tools for creating interactive VRChat worlds using Udon",
 	"dependencies" : {
@@ -10,9 +10,18 @@
 		"com.unity.textmeshpro" : "2.1.6"
 	},
 	"gitDependencies" : {
-		"com.vrchat.base" : "https://github.com/vrchat/packages.git?path=/packages/com.vrchat.base#3.0.1"
+		"com.vrchat.base" : "https://github.com/vrchat/packages-test.git?path=/packages/com.vrchat.base#3.0.2"
 	},
-	"url" : "https://github.com/vrchat/packages.git?path=/packages/com.vrchat.worlds#3.0.1",
+	"legacyFolders" : {
+		"Assets\\VRCSDK" : "",
+		"Assets\\Udon" : "",
+		"Assets\\VRChat Examples" : "",
+		"Packages\\com.vrchat.vrcsdk3" : ""
+	},
+	"legacyFiles" : {
+		"ProjectVersion.txt" : ""
+	},
+	"url" : "https://github.com/vrchat/packages-test.git?path=/packages/com.vrchat.worlds#3.0.2",
 	"samples" : [
 		{
 			"displayName" : "UdonExampleScene",
