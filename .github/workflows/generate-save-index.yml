@@ -1,0 +1,35 @@
+name: Generate and Save Index
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'list.yml'
+
+jobs:
+  build-run-nuke:
+    name: Build & Run Nuke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Cache .nuke/temp, ~/.nuget/packages
+        uses: actions/cache@v2
+        with:
+          path: |
+            ci/.nuke/temp
+            ~/.nuget/packages
+          key: ${{ runner.os }}-${{ hashFiles('**/global.json', '**/*.csproj') }}
+      - name: Run Nuke Build Command
+        run: cd ci && ./build.cmd --no-logo
+
+      - name: Commit file
+        uses: swinton/commit@v2.x
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          files: |
+            docs/index.json
+          commit-message: Updating List
+          ref: refs/heads/main

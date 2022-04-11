@@ -1,2 +1,16 @@
 
 .idea/
+
+ci/obj/
+
+*.DotSettings
+
+ci/.editorconfig
+
+ci/.nuke/temp/
+
+ci/bin/
+
+*.props
+
+*.targets
