@@ -11,7 +11,12 @@
           "unity": "2019.4",
           "description": "Base for VRChat SDK",
           "vrchatVersion": "2022.1.1",
-          "url": "https://github.com/vrchat/packages-test.git?path=/packages/com.vrchat.base#3.0.2"
+          "author": {
+            "name": "VRChat",
+            "email": "developer@vrchat.com",
+            "url": "https://github.com/vrchat/packages"
+          },
+          "url": "https://github.com/vrchat/packages.git?path=/packages/com.vrchat.base#3.0.2"
         },
         "3.0.0": {
           "name": "com.vrchat.base",
@@ -30,70 +35,6 @@
           "description": "Base for VRChat SDK",
           "vrchatVersion": "2022.1.1",
           "url": "https://github.com/vrchat/packages.git?path=/packages/com.vrchat.base#3.0.1"
-        }
-      }
-    },
-    "com.vrchat.avatars": {
-      "versions": {
-        "3.0.2": {
-          "name": "com.vrchat.avatars",
-          "displayName": "VRChat SDK - Avatars",
-          "version": "3.0.2",
-          "unity": "2019.4",
-          "description": "Our powerful Avatars 3.0 System",
-          "gitDependencies": {
-            "com.vrchat.base": "https://github.com/vrchat/packages-test.git?path=/packages/com.vrchat.base#3.0.2"
-          },
-          "legacyFolders": {
-            "Assets\\VRCSDK": ""
-          },
-          "legacyFiles": {
-            "ProjectVersion.txt": ""
-          },
-          "url": "https://github.com/vrchat/packages-test.git?path=/packages/com.vrchat.avatars#3.0.2",
-          "samples": [
-            {
-              "displayName": "AV3 Demo Assets",
-              "description": "Basic AV3 Demo Assets",
-              "path": "Samples~/AV3 Demo Assets"
-            }
-          ]
-        },
-        "3.0.1": {
-          "name": "com.vrchat.avatars",
-          "displayName": "VRChat SDK - Avatars",
-          "version": "3.0.1",
-          "unity": "2019.4",
-          "description": "Our powerful Avatars 3.0 System",
-          "gitDependencies": {
-            "com.vrchat.base": "https://github.com/vrchat/packages.git?path=/packages/com.vrchat.base#3.0.1"
-          },
-          "url": "https://github.com/vrchat/packages.git?path=/packages/com.vrchat.avatars#3.0.1",
-          "samples": [
-            {
-              "displayName": "AV3 Demo Assets",
-              "description": "Basic AV3 Demo Assets",
-              "path": "Samples~/AV3 Demo Assets"
-            }
-          ]
-        },
-        "3.0.0": {
-          "name": "com.vrchat.avatars",
-          "displayName": "VRChat SDK - Avatars",
-          "version": "3.0.0",
-          "unity": "2019.4",
-          "description": "Our powerful Avatars 3.0 System",
-          "gitDependencies": {
-            "com.vrchat.base": "https://github.com/vrchat/packages.git?path=/packages/com.vrchat.base#3.0.0"
-          },
-          "url": "https://github.com/vrchat/packages.git?path=/packages/com.vrchat.avatars#3.0.0",
-          "samples": [
-            {
-              "displayName": "AV3 Demo Assets",
-              "description": "Basic AV3 Demo Assets",
-              "path": "Samples~/AV3 Demo Assets"
-            }
-          ]
         }
       }
     },
@@ -179,6 +120,75 @@
               "displayName": "UdonExampleScene",
               "description": "Basic Udon Examples for Learning",
               "path": "Samples~/UdonExampleScene"
+            }
+          ]
+        }
+      }
+    },
+    "com.vrchat.avatars": {
+      "versions": {
+        "3.0.1": {
+          "name": "com.vrchat.avatars",
+          "displayName": "VRChat SDK - Avatars",
+          "version": "3.0.1",
+          "unity": "2019.4",
+          "description": "Our powerful Avatars 3.0 System",
+          "gitDependencies": {
+            "com.vrchat.base": "https://github.com/vrchat/packages.git?path=/packages/com.vrchat.base#3.0.1"
+          },
+          "url": "https://github.com/vrchat/packages.git?path=/packages/com.vrchat.avatars#3.0.1",
+          "samples": [
+            {
+              "displayName": "AV3 Demo Assets",
+              "description": "Basic AV3 Demo Assets",
+              "path": "Samples~/AV3 Demo Assets"
+            }
+          ]
+        },
+        "3.0.2": {
+          "name": "com.vrchat.avatars",
+          "displayName": "VRChat SDK - Avatars",
+          "version": "3.0.2",
+          "unity": "2019.4",
+          "description": "Our powerful Avatars 3.0 System",
+          "gitDependencies": {
+            "com.vrchat.base": "https://github.com/vrchat/packages.git?path=/packages/com.vrchat.base#3.0.2"
+          },
+          "author": {
+            "name": "VRChat",
+            "email": "developer@vrchat.com",
+            "url": "https://github.com/vrchat/packages"
+          },
+          "legacyFolders": {
+            "Assets\\VRCSDK": ""
+          },
+          "legacyFiles": {
+            "ProjectVersion.txt": ""
+          },
+          "url": "https://github.com/vrchat/packages.git?path=/packages/com.vrchat.avatars#3.0.2",
+          "samples": [
+            {
+              "displayName": "AV3 Demo Assets",
+              "description": "Basic AV3 Demo Assets",
+              "path": "Samples~/AV3 Demo Assets"
+            }
+          ]
+        },
+        "3.0.0": {
+          "name": "com.vrchat.avatars",
+          "displayName": "VRChat SDK - Avatars",
+          "version": "3.0.0",
+          "unity": "2019.4",
+          "description": "Our powerful Avatars 3.0 System",
+          "gitDependencies": {
+            "com.vrchat.base": "https://github.com/vrchat/packages.git?path=/packages/com.vrchat.base#3.0.0"
+          },
+          "url": "https://github.com/vrchat/packages.git?path=/packages/com.vrchat.avatars#3.0.0",
+          "samples": [
+            {
+              "displayName": "AV3 Demo Assets",
+              "description": "Basic AV3 Demo Assets",
+              "path": "Samples~/AV3 Demo Assets"
             }
           ]
         }
