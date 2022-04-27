@@ -1,9 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
 using JetBrains.Annotations;
 using UnityEditor;
 using UnityEngine;
-using VRC.Udon.Editor;
 using VRC.Udon.Editor.ProgramSources;
 using VRC.Udon.Editor.ProgramSources.Attributes;
 
@@ -25,10 +23,12 @@ namespace VRC.Udon.Editor.ProgramSources
 
         protected override void DrawProgramSourceGUI(UdonBehaviour udonBehaviour, ref bool dirty)
         {
-            DrawAssemblyTextArea(!Application.isPlaying, ref dirty);
             DrawAssemblyErrorTextArea();
 
-            base.DrawProgramSourceGUI(udonBehaviour, ref dirty);
+            DrawPublicVariables(udonBehaviour, ref dirty);
+            
+            DrawAssemblyTextArea(!Application.isPlaying, ref dirty);
+            DrawProgramDisassembly();
         }
 
         protected override void RefreshProgramImpl()

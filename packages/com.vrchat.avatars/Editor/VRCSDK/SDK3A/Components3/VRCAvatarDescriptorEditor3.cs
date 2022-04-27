@@ -41,7 +41,7 @@ public partial class AvatarDescriptorEditor3 : Editor
 
         InitEyeLook();
         Init_Expressions();
-
+        Init_Colliders();
     }
 
     public void OnSceneGUI()
@@ -52,6 +52,7 @@ public partial class AvatarDescriptorEditor3 : Editor
         DrawSceneViewpoint();
         DrawSceneEyeLook();
         DrawSceneLipSync();
+        DrawScene_Colliders();
 
         serializedObject.ApplyModifiedProperties();
     }
@@ -72,6 +73,7 @@ public partial class AvatarDescriptorEditor3 : Editor
         DrawPlayableLayers();
         DrawLowerBodySettings();
         DrawInspector_Expressions();
+        DrawInspector_Colliders();
         DrawFooter();
 
         serializedObject.ApplyModifiedProperties();

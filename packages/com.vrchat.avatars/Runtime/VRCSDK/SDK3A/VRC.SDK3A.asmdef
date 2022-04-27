@@ -1,7 +1,8 @@
 {
     "name": "VRC.SDK3A",
     "references": [
-        "VRC.SDKBase"
+        "VRC.SDKBase",
+        "Unity.Mathematics"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

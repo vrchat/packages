@@ -9,7 +9,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f742c36dce5730f4d96e37d82c330584, type: 3}
+  m_Script: {fileID: 1734077097, guid: db48663b319a020429e3b1265f97aff1, type: 3}
   m_Name: Excellent_Quest
   m_EditorClassIdentifier: 
   polyCount: 7500
@@ -38,3 +38,14 @@ MonoBehaviour:
   physicsColliderCount: 0
   physicsRigidbodyCount: 0
   audioSourceCount: 0
+  dynamicBones:
+    componentCount: 0
+    transformCount: 0
+    colliderCount: 0
+    collisionCheckCount: 0
+  physBones:
+    componentCount: 0
+    transformCount: 0
+    colliderCount: 0
+    collisionCheckCount: 0
+  contactCount: 2

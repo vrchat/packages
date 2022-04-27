@@ -20,6 +20,12 @@ public class VRCSceneDescriptorEditor3 : Editor
                 sceneDescriptor.gameObject.AddComponent<VRC.Core.PipelineManager>();
         }
 
+        if (sceneDescriptor.spawns.Length == 0)
+        {
+            sceneDescriptor.spawns = new[] { sceneDescriptor.transform };
+            UnityEngine.Debug.LogWarning($"Scene Descriptor spawns were empty, adding a default Spawn.");
+        }
+
         DrawDefaultInspector();
     }
 }

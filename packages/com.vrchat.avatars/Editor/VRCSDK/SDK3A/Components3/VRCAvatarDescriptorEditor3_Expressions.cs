@@ -42,8 +42,8 @@ public partial class AvatarDescriptorEditor3 : Editor
 					customize.boolValue = true;
 				}
 			}
+			Separator();
 		}
-		Separator();
 	}
 }
 #endif

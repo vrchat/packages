@@ -3,12 +3,13 @@
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
-  m_PrefabParentObject: {fileID: 0}
-  m_PrefabInternal: {fileID: 0}
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 468554b1bfc447f41a20a2f5bae65d16, type: 3}
+  m_Script: {fileID: 1357539684, guid: db48663b319a020429e3b1265f97aff1, type: 3}
   m_Name: AvatarPerformanceStatLevels_Windows
   m_EditorClassIdentifier: 
   excellent: {fileID: 11400000, guid: 88c46902276e7624e8adda9020bef28b, type: 2}

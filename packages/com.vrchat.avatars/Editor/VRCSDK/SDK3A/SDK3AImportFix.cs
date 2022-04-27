@@ -1,5 +1,7 @@
-﻿using System.IO;
+﻿using System.Collections.Generic;
+using System.IO;
 using UnityEditor;
+using UnityEditor.PackageManager.UI;
 using UnityEngine;
 
 namespace VRCSDK.SDK3.Editor
@@ -10,6 +12,12 @@ namespace VRCSDK.SDK3.Editor
         private const string packageRuntimePluginsFolder = "Packages/com.vrchat.avatars/Runtime/VRCSDK/Plugins";
         private const string legacyRuntimePluginsFolder = "Assets/VRCSDK/Plugins/";
         private const string reloadPluginsKey = "ReloadPlugins";
+        
+        private static readonly HashSet<string> _samplesToImport = new HashSet<string>()
+        {
+            "AV3 Demo Assets",
+            "Robot Avatar"
+        };
         
         static SDK3AImportFix()
         {
@@ -22,6 +30,30 @@ namespace VRCSDK.SDK3.Editor
                     Run();
                 }
                 SessionState.SetInt(reloadPluginsKey, reloadsUntilRun);
+            }
+            CheckForSampleImport();
+        }
+        
+        private static void CheckForSampleImport()
+        {
+            // Get package info for this assembly
+            var packageInfo = UnityEditor.PackageManager.PackageInfo.FindForAssembly(typeof(SDK3AImportFix).Assembly);
+            
+            var samples = Sample.FindByPackage(packageInfo.name, packageInfo.version);
+            foreach (var sample in samples)
+            {
+                if (!sample.isImported && _samplesToImport.Contains(sample.displayName))
+                {
+                    if (sample.Import(Sample.ImportOptions.HideImportWindow |
+                                      Sample.ImportOptions.OverridePreviousImports))
+                    {
+                        Debug.Log($"Automatically Imported the required sample {sample.displayName}");
+                    }
+                    else
+                    {
+                        Debug.LogWarning($"Could not Import required sample {sample.displayName}");
+                    }
+                }
             }
         }
         

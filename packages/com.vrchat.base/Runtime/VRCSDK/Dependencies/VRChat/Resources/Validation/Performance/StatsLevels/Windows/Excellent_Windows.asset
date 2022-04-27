@@ -3,12 +3,13 @@
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
-  m_PrefabParentObject: {fileID: 0}
-  m_PrefabInternal: {fileID: 0}
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f742c36dce5730f4d96e37d82c330584, type: 3}
+  m_Script: {fileID: 1734077097, guid: db48663b319a020429e3b1265f97aff1, type: 3}
   m_Name: Excellent_Windows
   m_EditorClassIdentifier: 
   polyCount: 32000
@@ -28,12 +29,19 @@ MonoBehaviour:
   particleCollisionEnabled: 0
   trailRendererCount: 1
   lineRendererCount: 1
-  dynamicBoneComponentCount: 0
-  dynamicBoneSimulatedBoneCount: 0
-  dynamicBoneColliderCount: 0
-  dynamicBoneCollisionCheckCount: 0
   clothCount: 0
   clothMaxVertices: 0
   physicsColliderCount: 0
   physicsRigidbodyCount: 0
   audioSourceCount: 1
+  dynamicBone:
+    componentCount: 0
+    transformCount: 0
+    colliderCount: 0
+    collisionCheckCount: 0
+  physBone:
+    componentCount: 4
+    transformCount: 16
+    colliderCount: 4
+    collisionCheckCount: 32
+  contactCount: 8

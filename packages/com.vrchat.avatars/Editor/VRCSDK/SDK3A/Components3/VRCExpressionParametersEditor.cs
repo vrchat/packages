@@ -108,7 +108,6 @@ public class VRCExpressionParametersEditor : Editor
 			}
 			EditorGUILayout.EndHorizontal();
 			
-
 			//Labels
 			EditorGUILayout.BeginHorizontal();
 			{

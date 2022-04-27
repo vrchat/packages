@@ -2,14 +2,31 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
+using JetBrains.Annotations;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.UIElements;
+using VRC.Udon.Editor.ProgramSources;
 using VRC.Udon.Editor.ProgramSources.Attributes;
+using VRC.Udon.Editor.ProgramSources.UdonGraphProgram;
 
 namespace VRC.Udon.Editor
 {
+    [PublicAPI]
+    [AttributeUsage(AttributeTargets.Class)]
+    public class CustomUdonBehaviourInspectorAttribute : Attribute
+    {
+        internal readonly Type InspectedProgramAssetType;
+        
+        public CustomUdonBehaviourInspectorAttribute(Type inspectedProgramAssetType)
+        {
+            InspectedProgramAssetType = inspectedProgramAssetType;
+        }
+    }
+    
     [CustomEditor(typeof(UdonBehaviour))]
     public class UdonBehaviourEditor : UnityEditor.Editor
     {
@@ -31,10 +48,19 @@ namespace VRC.Udon.Editor
         private void OnDisable()
         {
             UdonEditorManager.Instance.WantRepaint -= Repaint;
+            UserInspectorManager.DestroyEditor(this);
+        }
+
+        private void OnDestroy()
+        {
+            UserInspectorManager.DestroyEditor(this);
         }
 
         public override void OnInspectorGUI()
         {
+            if (UserInspectorManager.DoOnInspectorGUI(this))
+                return;
+            
             UdonBehaviour udonTarget = (UdonBehaviour)target;
 
             using (new EditorGUI.DisabledScope(Application.isPlaying))
@@ -169,6 +195,35 @@ namespace VRC.Udon.Editor
             }
         }
 
+        public override VisualElement CreateInspectorGUI()
+        {
+            if (UserInspectorManager.DoCreateInspectorGUI(this, out var element))
+                return element;
+
+            return null;
+        }
+
+        private void OnSceneGUI()
+        {
+            UserInspectorManager.DoOnSceneGUI(this);
+        }
+
+        public override bool RequiresConstantRepaint()
+        {
+            if (UserInspectorManager.DoRequiresConstantRepaint(this, out bool needsRepaint))
+                return needsRepaint;
+            
+            return false;
+        }
+
+        public override bool UseDefaultMargins()
+        {
+            if (UserInspectorManager.DoUseDefaultMargins(this, out bool useDefaultMargins))
+                return useDefaultMargins;
+
+            return true;
+        }
+
         private static AbstractUdonProgramSource CreateUdonProgramSourceAsset(Type newProgramType, string displayName, Scene scene, string udonBehaviourName)
         {
             string scenePath = Path.GetDirectoryName(scene.path) ?? "Assets";
@@ -206,7 +261,7 @@ namespace VRC.Udon.Editor
                 }
                 catch
                 {
-                    udonProgramSourceNewMenuAttributes = new UdonProgramSourceNewMenuAttribute[0];
+                    udonProgramSourceNewMenuAttributes = Array.Empty<UdonProgramSourceNewMenuAttribute>();
                 }
 
                 foreach (UdonProgramSourceNewMenuAttribute udonProgramSourceNewMenuAttribute in udonProgramSourceNewMenuAttributes)
@@ -234,6 +289,195 @@ namespace VRC.Udon.Editor
             );
 
             return programSourceTypesForNewMenu;
+        }
+    }
+
+    [InitializeOnLoad]
+    internal static class UserInspectorManager
+    {
+        private static Dictionary<Type, Type> _programAssetTypeToInspectorTypeMap = new Dictionary<Type, Type>();
+        private static Dictionary<UnityEditor.Editor, UnityEditor.Editor> _behaviourEditors = new Dictionary<UnityEditor.Editor, UnityEditor.Editor>();
+
+        static UserInspectorManager()
+        {
+            InitInspectorMap();
+        }
+
+        private static readonly HashSet<Type> _blacklistedInspectorTypes = new HashSet<Type>()
+        {
+            typeof(AbstractUdonProgramSource),
+            typeof(UdonProgramAsset),
+            typeof(UdonAssemblyProgramAsset),
+        };
+
+        private static void InitInspectorMap()
+        {
+            var inspectorTypes = TypeCache.GetTypesWithAttribute<CustomUdonBehaviourInspectorAttribute>();
+
+            foreach (Type inspectorType in inspectorTypes)
+            {
+                if (!inspectorType.IsSubclassOf(typeof(UnityEditor.Editor)))
+                {
+                    Debug.LogError($"'{inspectorType}' does not inherit from UnityEditor.Editor, but has a CustomUdonBehaviourInspector attribute");
+                    continue;
+                }
+                
+                var customInspectorAttribute = inspectorType.GetCustomAttribute<CustomUdonBehaviourInspectorAttribute>();
+
+                Type inspectedType = customInspectorAttribute.InspectedProgramAssetType;
+
+                if (inspectedType == null)
+                {
+                    Debug.LogError($"Inspected program asset type for '{inspectorType}' is null");
+                    continue;
+                }
+
+                if (!inspectedType.IsSubclassOf(typeof(AbstractUdonProgramSource)))
+                {
+                    Debug.LogError("Inspected type must be a subclass of AbstractUdonProgramSource");
+                    continue;
+                }
+
+                if (_blacklistedInspectorTypes.Contains(inspectedType))
+                {
+                    Debug.LogError($"Cannot provide a custom inspector for built-in Udon program asset type '{inspectedType}'");
+                    continue;
+                }
+
+                if (_programAssetTypeToInspectorTypeMap.ContainsKey(inspectedType))
+                {
+                    Debug.LogError("Cannot have multiple UdonBehaviour inspectors assigned to the same Udon program asset type");
+                    continue;
+                }
+                
+                _programAssetTypeToInspectorTypeMap.Add(inspectedType, inspectorType);
+            }
+        }
+
+        public static bool DoOnInspectorGUI(UnityEditor.Editor udonBehaviourEditor)
+        {
+            var editor = GetCustomEditor(udonBehaviourEditor);
+
+            if (editor == null)
+                return false;
+            
+            editor.OnInspectorGUI();
+
+            return true;
+        }
+
+        public static bool DoCreateInspectorGUI(UnityEditor.Editor udonBehaviourEditor, out VisualElement element)
+        {
+            element = null;
+            
+            var editor = GetCustomEditor(udonBehaviourEditor);
+
+            if (editor == null)
+                return false;
+
+            MethodInfo createInspectorGuiMethod = editor.GetType().GetMethod("CreateInspectorGUI", BindingFlags.Public | BindingFlags.Instance);
+
+            if (createInspectorGuiMethod == null)
+                return false;
+
+            element = (VisualElement)createInspectorGuiMethod.Invoke(editor, Array.Empty<object>());
+
+            return element != null;
+        }
+
+        public static bool DoOnSceneGUI(UnityEditor.Editor udonBehaviourEditor)
+        {
+            var editor = GetCustomEditor(udonBehaviourEditor);
+            
+            if (editor == null)
+                return false;
+            
+            MethodInfo onSceneGuiMethod = editor.GetType().GetMethod("OnSceneGUI", BindingFlags.Public | BindingFlags.Instance);
+
+            if (onSceneGuiMethod == null)
+                return false;
+
+            onSceneGuiMethod.Invoke(editor, Array.Empty<object>());
+            
+            return true;
+        }
+
+        public static bool DoRequiresConstantRepaint(UnityEditor.Editor udonBehaviourEditor, out bool needsRepaint)
+        {
+            needsRepaint = false;
+            
+            var editor = GetCustomEditor(udonBehaviourEditor);
+            
+            if (editor == null)
+                return false;
+            
+            MethodInfo needsConstantRepaintMethod = editor.GetType().GetMethod("NeedsConstantRepaint", BindingFlags.Public | BindingFlags.Instance);
+
+            if (needsConstantRepaintMethod == null)
+                return false;
+            
+            needsRepaint = (bool)needsConstantRepaintMethod.Invoke(editor, Array.Empty<object>());
+
+            return true;
+        }
+        
+        public static bool DoUseDefaultMargins(UnityEditor.Editor udonBehaviourEditor, out bool useDefaultMargins)
+        {
+            useDefaultMargins = true;
+            
+            var editor = GetCustomEditor(udonBehaviourEditor);
+            
+            if (editor == null)
+                return false;
+            
+            MethodInfo useDefaultMarginsMethod = editor.GetType().GetMethod("UseDefaultMargins", BindingFlags.Public | BindingFlags.Instance);
+
+            if (useDefaultMarginsMethod == null)
+                return false;
+            
+            useDefaultMargins = (bool)useDefaultMarginsMethod.Invoke(editor, Array.Empty<object>());
+
+            return true;
+        }
+
+        private static UnityEditor.Editor GetCustomEditor(UnityEditor.Editor udonBehaviourEditor)
+        {
+            if (udonBehaviourEditor == null)
+                return null;
+
+            UdonBehaviour targetBehaviour = udonBehaviourEditor.target as UdonBehaviour;
+            
+            if (targetBehaviour == null || targetBehaviour.programSource == null)
+                return null;
+            
+            if (!_programAssetTypeToInspectorTypeMap.TryGetValue(targetBehaviour.programSource.GetType(), out var editorType))
+                return null;
+
+            if (_behaviourEditors.TryGetValue(udonBehaviourEditor, out var foundEditor))
+            {
+                if (foundEditor.GetType() == editorType)
+                    return foundEditor;
+                
+                // Program asset type has changed so we need to check for a new editor type
+                DestroyEditor(udonBehaviourEditor);
+            }
+
+            var userEditor = UnityEditor.Editor.CreateEditor(targetBehaviour, editorType);
+            
+            _behaviourEditors.Add(udonBehaviourEditor, userEditor);
+
+            return userEditor;
+        }
+
+        public static void DestroyEditor(UnityEditor.Editor parentEditor)
+        {
+            if (!_behaviourEditors.TryGetValue(parentEditor, out var foundEditor)) 
+                return;
+
+            _behaviourEditors.Remove(parentEditor);
+            
+            if (foundEditor != null)
+                UnityEngine.Object.DestroyImmediate(foundEditor);
         }
     }
 }

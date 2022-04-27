@@ -3,12 +3,13 @@
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
-  m_PrefabParentObject: {fileID: 0}
-  m_PrefabInternal: {fileID: 0}
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f742c36dce5730f4d96e37d82c330584, type: 3}
+  m_Script: {fileID: 1734077097, guid: db48663b319a020429e3b1265f97aff1, type: 3}
   m_Name: Medium_Windows
   m_EditorClassIdentifier: 
   polyCount: 70000
@@ -28,12 +29,19 @@ MonoBehaviour:
   particleCollisionEnabled: 1
   trailRendererCount: 4
   lineRendererCount: 4
-  dynamicBoneComponentCount: 16
-  dynamicBoneSimulatedBoneCount: 32
-  dynamicBoneColliderCount: 4
-  dynamicBoneCollisionCheckCount: 8
   clothCount: 1
   clothMaxVertices: 100
   physicsColliderCount: 8
   physicsRigidbodyCount: 8
   audioSourceCount: 8
+  dynamicBone:
+    componentCount: 16
+    transformCount: 32
+    colliderCount: 4
+    collisionCheckCount: 8
+  physBone:
+    componentCount: 16
+    transformCount: 128
+    colliderCount: 16
+    collisionCheckCount: 256
+  contactCount: 24

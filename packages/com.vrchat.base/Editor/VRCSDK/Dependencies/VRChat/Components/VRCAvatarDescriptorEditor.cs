@@ -1,4 +1,4 @@
-#if VRC_SDK_VRCSDK2
+#if VRC_SDK_VRCSDK2 && !VRC_CLIENT
 using UnityEngine;
 using UnityEditor;
 using System.Collections;
