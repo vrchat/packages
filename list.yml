@@ -4,17 +4,20 @@ packages:
   - https://raw.githubusercontent.com/vrchat/packages/3.0.0/packages/com.vrchat.base/package.json # Base 3.0.0
   - https://raw.githubusercontent.com/vrchat/packages/3.0.1/packages/com.vrchat.base/package.json # Base 3.0.1
   - https://raw.githubusercontent.com/vrchat/packages/3.0.2/packages/com.vrchat.base/package.json # Base 3.0.2
+  - https://raw.githubusercontent.com/vrchat/packages/3.0.3/packages/com.vrchat.base/package.json # Base 3.0.3
   - https://raw.githubusercontent.com/vrchat/packages/vcc/packages/com.vrchat.base/package.json # Base VCC
   - https://raw.githubusercontent.com/vrchat/packages/wj3/packages/com.vrchat.base/package.json # Base WJ3
   
   - https://raw.githubusercontent.com/vrchat/packages/3.0.0/packages/com.vrchat.worlds/package.json # Worlds 3.0.0
   - https://raw.githubusercontent.com/vrchat/packages/3.0.1/packages/com.vrchat.worlds/package.json # Worlds 3.0.1
   - https://raw.githubusercontent.com/vrchat/packages/3.0.2/packages/com.vrchat.worlds/package.json # Worlds 3.0.2
+  - https://raw.githubusercontent.com/vrchat/packages/3.0.3/packages/com.vrchat.worlds/package.json # Worlds 3.0.3
   - https://raw.githubusercontent.com/vrchat/packages/vcc/packages/com.vrchat.worlds/package.json # Worlds VCC
   - https://raw.githubusercontent.com/vrchat/packages/wj3/packages/com.vrchat.worlds/package.json # Worlds WJ3
 
   - https://raw.githubusercontent.com/vrchat/packages/3.0.0/packages/com.vrchat.avatars/package.json # Avatars 3.0.0
   - https://raw.githubusercontent.com/vrchat/packages/3.0.1/packages/com.vrchat.avatars/package.json # Avatars 3.0.1
   - https://raw.githubusercontent.com/vrchat/packages/3.0.2/packages/com.vrchat.avatars/package.json # Avatars 3.0.2
+  - https://raw.githubusercontent.com/vrchat/packages/3.0.3/packages/com.vrchat.avatars/package.json # Avatars 3.0.3
   - https://raw.githubusercontent.com/vrchat/packages/vcc/packages/com.vrchat.avatars/package.json # Avatars VCC
   - https://raw.githubusercontent.com/vrchat/packages/wj3/packages/com.vrchat.avatars/package.json # Avatars WJ3
