@@ -1,4 +1,4 @@
-name: VRChat Curated Packages
+name: VRChat Official SDK Packages
 author: hello@vrchat.com
 packages:
 - https://raw.githubusercontent.com/vrchat/packages/3.0.0/packages/com.vrchat.base/package.json
@@ -19,6 +19,3 @@ packages:
 - https://raw.githubusercontent.com/vrchat/packages/3.0.3/packages/com.vrchat.avatars/package.json
 - https://raw.githubusercontent.com/vrchat/packages/vcc/packages/com.vrchat.avatars/package.json
 - https://raw.githubusercontent.com/vrchat/packages/wj3/packages/com.vrchat.avatars/package.json
-- https://raw.githubusercontent.com/vrchat/packages/0.0.1/packages/com.vrchat.base/package.json
-- https://raw.githubusercontent.com/vrchat/packages/0.0.1/packages/com.vrchat.worlds/package.json
-- https://raw.githubusercontent.com/vrchat/packages/0.0.1/packages/com.vrchat.avatars/package.json
