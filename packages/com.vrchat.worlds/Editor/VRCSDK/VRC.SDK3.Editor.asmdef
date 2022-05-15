@@ -21,6 +21,11 @@
             "name": "com.vrchat.base",
             "expression": "3.0.0",
             "define": "VRC_SDK_VRCSDK3"
+        },
+        {
+            "name": "com.vrchat.base",
+            "expression": "3.0.0",
+            "define": "VRCUPM"
         }
     ],
     "noEngineReferences": false

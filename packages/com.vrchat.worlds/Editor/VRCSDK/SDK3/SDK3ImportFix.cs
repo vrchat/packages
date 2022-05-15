@@ -7,7 +7,7 @@ using VRC.SDK3.Components;
 using System.IO;
 using UnityEditor.PackageManager.UI;
 
-namespace VRCSDK.SDK3.Editor
+namespace VRC.SDK3.Editor
 {
     [InitializeOnLoad]
     public class SDK3ImportFix
@@ -29,8 +29,22 @@ namespace VRCSDK.SDK3.Editor
 
         private static void CheckForSampleImport()
         {
+#if VRCUPM
             // Get package info for this assembly
             var packageInfo = UnityEditor.PackageManager.PackageInfo.FindForAssembly(typeof(SDK3ImportFix).Assembly);
+            
+            // Exit early if package cannot be found
+            if (packageInfo == null)
+            {
+                return;
+            }
+
+            // Check if samples have ever been imported, exit if they have
+            var settings = VRCPackageSettings.Create();
+            if (settings.samplesImported)
+            {
+                return;
+            }
             
             var samples = Sample.FindByPackage(packageInfo.name, packageInfo.version);
             foreach (var sample in samples)
@@ -41,6 +55,8 @@ namespace VRCSDK.SDK3.Editor
                                       Sample.ImportOptions.OverridePreviousImports))
                     {
                         Debug.Log($"Automatically Imported the required sample {sample.displayName}");
+                        settings.samplesImported = true;
+                        settings.Save();
                     }
                     else
                     {
@@ -48,6 +64,7 @@ namespace VRCSDK.SDK3.Editor
                     }
                 }
             }
+#endif
         }
         
         private static void CheckForReload()
