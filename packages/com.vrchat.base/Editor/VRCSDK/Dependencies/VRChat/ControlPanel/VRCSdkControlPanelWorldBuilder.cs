@@ -7,6 +7,7 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine.Networking;
 using UnityEngine.SceneManagement;
+using VRC.Editor;
 using VRC.SDKBase.Editor.Validation;
 using Object = UnityEngine.Object;
 

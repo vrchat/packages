@@ -1,7 +1,8 @@
 {
     "name": "VRC.SDKBase",
     "references": [
-        "Unity.Timeline"
+        "Unity.Timeline",
+        "VRC.Enums.Validation.Performance"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

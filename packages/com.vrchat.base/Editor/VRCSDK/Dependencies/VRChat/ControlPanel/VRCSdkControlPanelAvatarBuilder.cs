@@ -6,6 +6,7 @@ using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Networking;
+using VRC.Editor;
 using VRC.SDKBase.Editor.BuildPipeline;
 using VRC.SDKBase.Editor.Validation;
 using VRC.SDKBase.Validation.Performance;

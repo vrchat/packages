@@ -1,6 +1,7 @@
 ﻿using UnityEditor;
 using UnityEngine;
 using VRC.Core;
+using VRC.Editor;
 using VRC.SDKBase.Editor;
 
 [ExecuteInEditMode]

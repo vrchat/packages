@@ -11,6 +11,8 @@ using UnityEngine.Rendering;
 using VRC.SDKBase.Validation.Performance.Stats;
 using Object = UnityEngine.Object;
 
+namespace VRC.Editor
+{
 /// <summary>
 /// Setup up SDK env on editor launch
 /// </summary>
@@ -190,7 +192,7 @@ public class EnvConfig
         }
     }
 
-    public static void RequestConfigureSettings()
+        private static void RequestConfigureSettings()
     {
         _requestConfigureSettings = true;
     }
@@ -201,7 +203,7 @@ public class EnvConfig
         RequestConfigureSettings();
     }
 
-    public static bool ConfigureSettings()
+        private static bool ConfigureSettings()
     {
         CheckForFirstInit();
 
@@ -383,7 +385,7 @@ public class EnvConfig
             return;
         }
 
-        SerializedObject playerSettingsSerializedObject = new SerializedObject(playerSettings.Cast<UnityEngine.Object>().ToArray());
+            SerializedObject playerSettingsSerializedObject = new SerializedObject(playerSettings.Cast<Object>().ToArray());
         SerializedProperty batchingSettings = playerSettingsSerializedObject.FindProperty("m_BuildTargetBatching");
         if(batchingSettings == null)
         {
@@ -447,15 +449,13 @@ public class EnvConfig
         }
     }
 
-    public static bool CheckForFirstInit()
+    private static void CheckForFirstInit()
     {
         bool firstLaunch = SessionState.GetBool("EnvConfigFirstLaunch", true);
         if(firstLaunch)
         {
             SessionState.SetBool("EnvConfigFirstLaunch", false);
         }
-
-        return firstLaunch;
     }
 
     private static void SetDefaultGraphicsAPIs()
@@ -956,6 +956,12 @@ public class EnvConfig
         #else
         PlayerSettings.Android.targetSdkVersion = AndroidSdkVersions.AndroidApiLevel26;
         #endif
+
+        #if VRC_VR_OCULUS
+#pragma warning disable CS0618
+        PlayerSettings.VROculus.v2Signing = true;
+#pragma warning restore CS0618
+        #endif
 #else
         PlayerSettings.SetAdditionalIl2CppArgs("");
 #endif
@@ -1035,10 +1041,10 @@ public class EnvConfig
         #endif
     }
 
-    private static void ConfigureAssets()
+    public static void ConfigureAssets(bool forStandaloneBuild = false)
     {
 #if VRC_CLIENT
-        VRC.UI.Client.Editor.VRCUIManagerEditorHelpers.ConfigureNewUIAssets();
+        VRC.UI.Client.Editor.VRCUIManagerEditorHelpers.ConfigureNewUIAssets(forStandaloneBuild);
 #endif
     }
 
@@ -1077,7 +1083,8 @@ public class EnvConfig
         }
     }
     
-    private static readonly Dictionary<string, object>[] _graphicsPresets = {
+        private static readonly Dictionary<string, object>[] _graphicsPresets =
+        {
         new Dictionary<string, object>
         {
             {"name", "Low"},
@@ -1269,4 +1276,5 @@ public class EnvConfig
             {"excludedTargetPlatforms", new []{"Standalone"}}
         }
     };
+}
 }
