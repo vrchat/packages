@@ -772,7 +772,7 @@ namespace VRC.SDKBase.Validation.Performance
                 }
                 case AvatarPerformanceCategory.PhysBoneComponentCount:
                 {
-                    switch (rating)
+                    switch(rating)
                     {
                         case PerformanceRating.Excellent:
                         case PerformanceRating.Good:
@@ -811,7 +811,7 @@ namespace VRC.SDKBase.Validation.Performance
                 }
                 case AvatarPerformanceCategory.PhysBoneTransformCount:
                 {
-                    switch (rating)
+                    switch(rating)
                     {
                         case PerformanceRating.Excellent:
                         case PerformanceRating.Good:
@@ -851,7 +851,7 @@ namespace VRC.SDKBase.Validation.Performance
                 }
                 case AvatarPerformanceCategory.PhysBoneColliderCount:
                 {
-                    switch (rating)
+                    switch(rating)
                     {
                         case PerformanceRating.Excellent:
                         case PerformanceRating.Good:
@@ -890,7 +890,7 @@ namespace VRC.SDKBase.Validation.Performance
                 }
                 case AvatarPerformanceCategory.PhysBoneCollisionCheckCount:
                 {
-                    switch (rating)
+                    switch(rating)
                     {
                         case PerformanceRating.Excellent:
                         case PerformanceRating.Good:
@@ -929,7 +929,7 @@ namespace VRC.SDKBase.Validation.Performance
                 }
                 case AvatarPerformanceCategory.ContactCount:
                 {
-                    switch (rating)
+                    switch(rating)
                     {
                         case PerformanceRating.Excellent:
                         case PerformanceRating.Good:

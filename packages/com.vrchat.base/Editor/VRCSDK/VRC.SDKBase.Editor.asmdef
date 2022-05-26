@@ -1,7 +1,8 @@
 {
     "name": "VRC.SDKBase.Editor",
     "references": [
-        "VRC.SDKBase"
+        "VRC.SDKBase",
+        "VRC.Enums.Validation.Performance"
     ],
     "includePlatforms": [
         "Editor"

@@ -179,10 +179,9 @@ namespace VRCSDK2
                         {
                             try
                             {
-                                Dictionary<string, object> publish = c as Dictionary<string, object>;
-                                if (publish["canPublish"] is bool)
+                                if (c["canPublish"].Type == BestHTTP.JSON.Json.TokenType.Boolean)
                                 {
-                                    HasExceededPublishLimit = !(bool)(publish["canPublish"]);
+                                    HasExceededPublishLimit = !(bool)(c["canPublish"]);
                                 }
                                 else
                                     HasExceededPublishLimit = true;

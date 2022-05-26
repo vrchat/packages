@@ -1361,7 +1361,7 @@ namespace VRC.Core
                 apiFile.StartSimpleUpload(fileDescriptorType,
                     (c) =>
                     {
-                        uploadUrl = (c as ApiDictContainer).ResponseDictionary["url"] as string;
+                        uploadUrl = (c as ApiDictContainer).ResponseDictionary["url"].ToString();
                         wait = false;
                     },
                     (c) =>
@@ -1619,7 +1619,7 @@ namespace VRC.Core
                     apiFile.StartMultipartUpload(fileDescriptorType, partNumber,
                         (c) =>
                         {
-                            uploadUrl = (c as ApiDictContainer).ResponseDictionary["url"] as string;
+                            uploadUrl = (c as ApiDictContainer).ResponseDictionary["url"].ToString();
                             wait = false;
                         },
                         (c) =>

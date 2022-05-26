@@ -6,6 +6,7 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using VRC.Editor;
 using VRC.SDK3.Editor;
 using VRC.SDKBase.Editor;
 using VRC.SDKBase.Editor.BuildPipeline;

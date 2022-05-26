@@ -3,7 +3,8 @@
     "references": [
         "VRC.SDK3A",
         "VRC.SDKBase.Editor",
-        "VRC.SDKBase"
+        "VRC.SDKBase",
+        "VRC.Enums.Validation.Performance"
     ],
     "includePlatforms": [
         "Editor"

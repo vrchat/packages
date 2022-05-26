@@ -145,6 +145,9 @@ namespace VRC.Udon
 
         internal int UpdateOrder => _program?.UpdateOrder ?? 0;
 
+        [PublicAPI]
+        public override bool DisableEventProcessing { get; set; } = false;
+
         #endregion
 
         #region Private Fields and Properties
@@ -1146,6 +1149,11 @@ namespace VRC.Udon
 
         public override bool RunEvent(string eventName, params (string symbolName, object value)[] programVariables)
         {
+            if (DisableEventProcessing)
+            {
+                return false;
+            }
+
             if(!_isReady)
             {
                 return false;

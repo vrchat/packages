@@ -4,6 +4,7 @@ using System.Linq;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
+using VRC.Editor;
 using VRC.SDKBase.Editor;
 using VRC.SDK3.Avatars;
 using VRC.SDK3.Avatars.Components;
@@ -320,7 +321,7 @@ namespace VRC.SDK3.Editor
             // delete PipelineSaver(s) from the list of the Components we will destroy now
             foreach (Component c in toRemoveSilently)
             {
-                componentsToRemove.Remove(c);
+                    componentsToRemove.Remove(c);
             }
 
             HashSet<string> componentsToRemoveNames = new HashSet<string>();
@@ -408,11 +409,11 @@ namespace VRC.SDK3.Editor
                         break;
                     case AvatarPerformanceCategory.MaterialCount:
                         show = GetAvatarSubSelectAction(avatar,
-                            new[] { typeof(MeshRenderer), typeof(SkinnedMeshRenderer) });
+                            new[] {typeof(MeshRenderer), typeof(SkinnedMeshRenderer)});
                         break;
                     case AvatarPerformanceCategory.MeshCount:
                         show = GetAvatarSubSelectAction(avatar,
-                            new[] { typeof(MeshRenderer), typeof(SkinnedMeshRenderer) });
+                            new[] {typeof(MeshRenderer), typeof(SkinnedMeshRenderer)});
                         break;
                     case AvatarPerformanceCategory.ParticleCollisionEnabled:
                         show = GetAvatarSubSelectAction(avatar, typeof(ParticleSystem));
@@ -437,7 +438,7 @@ namespace VRC.SDK3.Editor
                         break;
                     case AvatarPerformanceCategory.PolyCount:
                         show = GetAvatarSubSelectAction(avatar,
-                            new[] { typeof(MeshRenderer), typeof(SkinnedMeshRenderer) });
+                            new[] {typeof(MeshRenderer), typeof(SkinnedMeshRenderer)});
                         break;
                     case AvatarPerformanceCategory.SkinnedMeshCount:
                         show = GetAvatarSubSelectAction(avatar, typeof(SkinnedMeshRenderer));
@@ -504,9 +505,9 @@ namespace VRC.SDK3.Editor
             GUILayout.Label("Offline Testing", VRCSdkControlPanel.infoGuiStyle);
             if (GUI.enabled)
             {
-                GUILayout.Label(
-                    "Before uploading your avatar you may build and test it in the VRChat client. Other users will not able to see the test avatar.",
-                    VRCSdkControlPanel.infoGuiStyle);
+            GUILayout.Label(
+                "Before uploading your avatar you may build and test it in the VRChat client. Other users will not able to see the test avatar.",
+                VRCSdkControlPanel.infoGuiStyle);
             }
             else
             {
@@ -542,7 +543,7 @@ namespace VRC.SDK3.Editor
 
             EditorGUILayout.Separator();
 
-            EditorGUILayout.BeginVertical(VRCSdkControlPanel.boxGuiStyle);
+                       EditorGUILayout.BeginVertical(VRCSdkControlPanel.boxGuiStyle);
             EditorGUILayout.BeginHorizontal();
 
             EditorGUILayout.BeginVertical(GUILayout.Width(300));
