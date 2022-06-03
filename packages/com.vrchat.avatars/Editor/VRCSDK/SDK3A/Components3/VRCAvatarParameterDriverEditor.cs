@@ -9,28 +9,24 @@ using System;
 [CustomEditor(typeof(VRCAvatarParameterDriver))]
 public class AvatarParameterDriverEditor : Editor
 {
-	VRCAvatarParameterDriver driver;
 	string[] parameterNames;
 	AnimatorControllerParameterType[] parameterTypes;
-
-	enum ChangeTypeBool
-	{
-		Set = 0,
-		Random = 2,
-	}
+	int selectedParam = -1;
 
 	public void OnEnable()
 	{
-		var driver = target as VRCAvatarParameterDriver;
-
+		UpdateParameters();
+	}
+	void UpdateParameters()
+	{
 		//Build parameter names
 		var controller = GetCurrentController();
-		if (controller != null)
+		if(controller != null)
 		{
 			//Standard
 			List<string> names = new List<string>();
 			List<AnimatorControllerParameterType> types = new List<AnimatorControllerParameterType>();
-			foreach (var item in controller.parameters)
+			foreach(var item in controller.parameters)
 			{
 				names.Add(item.name);
 				types.Add(item.type);
@@ -46,7 +42,7 @@ public class AvatarParameterDriverEditor : Editor
 		var toolType = Type.GetType("UnityEditor.Graphs.AnimatorControllerTool, UnityEditor.Graphs");
 		var tool = EditorWindow.GetWindow(toolType);
 		var controllerProperty = toolType.GetProperty("animatorController", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
-		if (controllerProperty != null)
+		if(controllerProperty != null)
 		{
 			controller = controllerProperty.GetValue(tool, null) as UnityEditor.Animations.AnimatorController;
 		}
@@ -61,161 +57,239 @@ public class AvatarParameterDriverEditor : Editor
 		serializedObject.Update();
 		var driver = target as VRCAvatarParameterDriver;
 
+		//Update parameters
+		if(parameterNames == null)
+			UpdateParameters();
+
 		//Info
-		EditorGUILayout.HelpBox("This behaviour modifies parameters on this and all other animation controllers referenced on the avatar descriptor.", MessageType.Info);
-		EditorGUILayout.HelpBox("You should primarily be driving expression parameters as they are the only variables that sync across the network. Changes to any other parameter will not be synced across the network.", MessageType.Info);
+		EditorGUILayout.HelpBox("This behaviour modifies parameters on this and all other animation controllers referenced on the avatar descriptor.\n\nKeep in mind only parameters defined in your VRCExpressionParameter object will be synced across the network.\n\nAdditionally, synced parameters are clamped between Int [0,255] and Float [-1,1]. Operations that modify these parameters will be clipped inside those bounds.", MessageType.Info);
 
 		//Data
-		driver.localOnly = EditorGUILayout.Toggle("Local Only", driver.localOnly);
+		EditorGUILayout.PropertyField(serializedObject.FindProperty("localOnly"));
+		EditorGUILayout.PropertyField(serializedObject.FindProperty("debugString"));
 
-		//Check for info message
+		//Local only info
 		bool usesAddOrRandom = false;
 		foreach(var param in driver.parameters)
 		{
-			if (param.type != ChangeType.Set)
+			if(param.type == ChangeType.Add || param.type == ChangeType.Random)
 				usesAddOrRandom = true;
 		}
 		if(usesAddOrRandom && !driver.localOnly)
 			EditorGUILayout.HelpBox("Using Add & Random may not produce the same result when run on remote instance of the avatar.  When using these modes it's suggested you use a synced parameter and use the local only option.", MessageType.Warning);
 
 		//Parameters
-		for (int i = 0; i < driver.parameters.Count; i++)
-		{
-			EditorGUILayout.BeginVertical(GUI.skin.box);
-			{
-				var param = driver.parameters[i];
-				var index = IndexOf(parameterNames, param.name);
-
-				//Name
-				EditorGUILayout.BeginHorizontal();
-				EditorGUILayout.LabelField("Name");
-				if (parameterNames != null)
-				{
-					EditorGUI.BeginChangeCheck();
-					index = EditorGUILayout.Popup(index, parameterNames);
-					if (EditorGUI.EndChangeCheck() && index >= 0)
-						param.name = parameterNames[index];
-				}
-				param.name = EditorGUILayout.TextField(param.name);
-				EditorGUILayout.EndHorizontal();
-
-				//Value
-				if (index >= 0)
-				{
-					var type = parameterTypes[index];
-					if (type == AnimatorControllerParameterType.Int)
-					{
-						//Type
-						param.type = (VRCAvatarParameterDriver.ChangeType)EditorGUILayout.EnumPopup("Change Type", param.type);
-
-						//Value
-						if (param.type == ChangeType.Set)
-							param.value = Mathf.Clamp(EditorGUILayout.IntField("Value", (int)param.value), 0, 255);
-						else if (param.type == ChangeType.Add)
-							param.value = Mathf.Clamp(EditorGUILayout.IntField("Value", (int)param.value), -255, 255);
-						else if (param.type == ChangeType.Random)
-						{
-							param.valueMin = Mathf.Clamp(EditorGUILayout.IntField("Min Value", (int)param.valueMin), 0, 255);
-							param.valueMax = Mathf.Clamp(EditorGUILayout.IntField("Max Value", (int)param.valueMax), param.valueMin, 255);
-						}
-					}
-					else if (type == AnimatorControllerParameterType.Float)
-					{
-						//Type
-						param.type = (VRCAvatarParameterDriver.ChangeType)EditorGUILayout.EnumPopup("Change Type", param.type);
-
-						//Value
-						if (param.type == ChangeType.Set || param.type == ChangeType.Add)
-							param.value = Mathf.Clamp(EditorGUILayout.FloatField("Value", param.value), -1f, 1);
-						else if (param.type == ChangeType.Random)
-						{
-							param.valueMin = Mathf.Clamp(EditorGUILayout.FloatField("Min Value", param.valueMin), -1f, 1);
-							param.valueMax = Mathf.Clamp(EditorGUILayout.FloatField("Max Value", param.valueMax), param.valueMin, 1);
-						}
-					}
-					else if (type == AnimatorControllerParameterType.Bool)
-					{
-						//Type
-						param.type = (VRCAvatarParameterDriver.ChangeType)EditorGUILayout.EnumPopup("Change Type", (ChangeTypeBool)param.type);
-
-						//Value
-						if (param.type == ChangeType.Set)
-							param.value = EditorGUILayout.Toggle("Value", param.value != 0) ? 1f : 0f;
-						else
-							param.chance = Mathf.Clamp(EditorGUILayout.FloatField("Chance", param.chance), 0f, 1f);
-					}
-					else if (type == AnimatorControllerParameterType.Trigger)
-					{
-						//Type
-						param.type = (VRCAvatarParameterDriver.ChangeType)EditorGUILayout.EnumPopup("Change Type", (ChangeTypeBool)param.type);
-
-						//Chance
-						if (param.type == ChangeType.Random)
-							param.chance = Mathf.Clamp(EditorGUILayout.FloatField("Chance", param.chance), 0f, 1f);
-					}
-				}
-				else
-				{
-					EditorGUI.BeginDisabledGroup(true);
-					EditorGUILayout.EnumPopup(param.type);
-					if(param.type == ChangeType.Random)
-					{
-						EditorGUILayout.FloatField("Min Value", param.valueMin);
-						EditorGUILayout.FloatField("Max Value", param.valueMax);
-					}
-					else
-					{
-						EditorGUILayout.FloatField("Value", param.value);
-					}
-					EditorGUI.EndDisabledGroup();
-					DrawInfoBox("WARNING: Parameter not found. Make sure you defined it on the animation controller.");
-				}
-
-				//Delete
-				EditorGUILayout.BeginHorizontal();
-				GUILayout.FlexibleSpace();
-				if (GUILayout.Button("Delete"))
-				{
-					driver.parameters.RemoveAt(i);
-					i--;
-				}
-				EditorGUILayout.EndHorizontal();
-			}
-			EditorGUILayout.EndHorizontal();
-		}
-
-		//Add
-		if (GUILayout.Button("Add Parameter"))
-		{
-			var parameter = new Parameter();
-			if (parameterNames != null && parameterNames.Length > 0)
-				parameter.name = parameterNames[0];
-			driver.parameters.Add(parameter);
-		}
-
-		int IndexOf(string[] array, string value)
-		{
-			if (array == null)
-				return -1;
-			for(int i=0; i<array.Length; i++)
-			{
-				if (array[i] == value)
-					return i;
-			}
-			return -1;
-		}
-
-		void DrawInfoBox(string text)
-		{
-			EditorGUI.indentLevel += 2;
-			EditorGUILayout.LabelField(text, EditorStyles.textArea);
-			EditorGUI.indentLevel -= 2;
-		}
+		var editable = new InspectorUtil.EditableArray();
+		editable.array = serializedObject.FindProperty("parameters");
+		editable.maxElements = int.MaxValue;
+		editable.onDrawElement = DrawParameter;
+		InspectorUtil.DrawEditableArray(this, editable, ref selectedParam);
 
 		//End
 		serializedObject.ApplyModifiedProperties();
-		if (EditorGUI.EndChangeCheck())
+		if(EditorGUI.EndChangeCheck())
 			EditorUtility.SetDirty(this);
+	}
+
+	void DrawParameter(SerializedProperty parameters, int arrayIndex)
+	{
+		var param = parameters.GetArrayElementAtIndex(arrayIndex);
+		var name = param.FindPropertyRelative("name");
+		var source = param.FindPropertyRelative("source");
+		var changeType = param.FindPropertyRelative("type");
+		var value = param.FindPropertyRelative("value");
+		var minValue = param.FindPropertyRelative("valueMin");
+		var maxValue = param.FindPropertyRelative("valueMax");
+		var chance = param.FindPropertyRelative("chance");
+
+		//Change type
+		EditorGUILayout.PropertyField(changeType);
+
+		switch((ChangeType)changeType.enumValueIndex)
+		{
+			case ChangeType.Set:
+			{
+				DrawSet();
+				break;
+			}
+			case ChangeType.Add:
+			{
+				DrawAdd();
+				break;
+			}
+			case ChangeType.Random:
+			{
+				DrawRandom();
+				break;
+			}
+			case ChangeType.Copy:
+			{
+				DrawCopy();
+				break;
+			}
+		}
+
+		void DrawSet()
+		{
+			var destIndex = DrawParamaterDropdown(name, "Destination");
+			var valueType = destIndex >= 0 ? parameterTypes[destIndex] : AnimatorControllerParameterType.Float;
+			switch(valueType)
+			{
+				case AnimatorControllerParameterType.Bool:
+				{
+					value.floatValue = EditorGUILayout.Toggle("Value", value.floatValue != 0f) ? 1f : 0f;
+					break;
+				}
+				case AnimatorControllerParameterType.Int:
+				{
+					value.floatValue = EditorGUILayout.IntField("Value", (int)value.floatValue);
+					break;
+				}
+				case AnimatorControllerParameterType.Float:
+				{
+					value.floatValue = EditorGUILayout.FloatField("Value", value.floatValue);
+					break;
+				}
+				case AnimatorControllerParameterType.Trigger:
+				{
+					break;
+				}
+				default:
+				{
+					EditorGUILayout.HelpBox($"{valueType} parameters don't support the {changeType.enumNames[changeType.enumValueIndex]} type", MessageType.Warning);
+					break;
+				}
+			}
+		}
+		void DrawAdd()
+		{
+			var destIndex = DrawParamaterDropdown(name, "Destination");
+			var valueType = destIndex >= 0 ? parameterTypes[destIndex] : AnimatorControllerParameterType.Float;
+			switch(valueType)
+			{
+				case AnimatorControllerParameterType.Int:
+				{
+					value.floatValue = EditorGUILayout.IntField("Value", (int)value.floatValue);
+					break;
+				}
+				case AnimatorControllerParameterType.Float:
+				{
+					value.floatValue = EditorGUILayout.FloatField("Value", value.floatValue);
+					break;
+				}
+				default:
+				{
+					EditorGUILayout.HelpBox($"{valueType} parameters don't support the {changeType.enumNames[changeType.enumValueIndex]} type", MessageType.Warning);
+					break;
+				}
+			}
+		}
+		void DrawRandom()
+		{
+			var destIndex = DrawParamaterDropdown(name, "Destination");
+			var valueType = destIndex >= 0 ? parameterTypes[destIndex] : AnimatorControllerParameterType.Float;
+			switch(valueType)
+			{
+				case AnimatorControllerParameterType.Bool:
+				case AnimatorControllerParameterType.Trigger:
+				{
+					EditorGUILayout.PropertyField(chance);
+					break;
+				}
+				case AnimatorControllerParameterType.Int:
+				{
+					minValue.floatValue = EditorGUILayout.IntField("Min Value", (int)minValue.floatValue);
+					maxValue.floatValue = EditorGUILayout.IntField("Max Value", (int)maxValue.floatValue);
+					break;
+				}
+				case AnimatorControllerParameterType.Float:
+				{
+					minValue.floatValue = EditorGUILayout.FloatField("Min Value", minValue.floatValue);
+					maxValue.floatValue = EditorGUILayout.FloatField("Max Value", maxValue.floatValue);
+					break;
+				}
+			}
+		}
+		void DrawCopy()
+		{
+			var sourceIndex = DrawParamaterDropdown(source, "Source");
+			var sourceValueType = sourceIndex >= 0 ? parameterTypes[sourceIndex] : AnimatorControllerParameterType.Float;
+			var destIndex = DrawParamaterDropdown(name, "Destination");
+			var destValueType = destIndex >= 0 ? parameterTypes[destIndex] : AnimatorControllerParameterType.Float;
+			switch(destValueType)
+			{
+				case AnimatorControllerParameterType.Bool:
+				case AnimatorControllerParameterType.Int:
+				case AnimatorControllerParameterType.Float:
+				{
+					if(sourceIndex >= 0)
+					{
+						if(sourceValueType == AnimatorControllerParameterType.Trigger)
+						{
+							EditorGUILayout.HelpBox("Source parameter can't be the Trigger type", MessageType.Warning);
+						}
+						else if(sourceValueType != destValueType)
+						{
+							EditorGUILayout.HelpBox($"Value will be converted from a {sourceValueType} to a {destValueType}.", MessageType.Info);
+						}
+					}
+
+					var convertRange = param.FindPropertyRelative("convertRange");
+					EditorGUILayout.PropertyField(convertRange);
+					if(convertRange.boolValue)
+					{
+						EditorGUI.indentLevel += 1;
+						DrawRange("Source", "sourceMin", "sourceMax");
+						DrawRange("Destination", "destMin", "destMax");
+						EditorGUI.indentLevel -= 1;
+
+						void DrawRange(string label, string min, string max)
+						{
+							var minVal = param.FindPropertyRelative(min);
+							var maxVal = param.FindPropertyRelative(max);
+
+							EditorGUILayout.BeginHorizontal();
+							EditorGUILayout.PrefixLabel(label);
+							EditorGUILayout.LabelField("Min", GUILayout.Width(64));
+							minVal.floatValue = EditorGUILayout.FloatField(minVal.floatValue);
+							EditorGUILayout.LabelField("Max", GUILayout.Width(64));
+							maxVal.floatValue = EditorGUILayout.FloatField(maxVal.floatValue);
+							EditorGUILayout.EndHorizontal();
+						}
+					}
+
+					break;
+				}
+				default:
+				{
+					EditorGUILayout.HelpBox($"{destValueType} parameters don't support the {changeType.enumNames[changeType.enumValueIndex]} type", MessageType.Warning);
+					break;
+				}
+			}
+		}
+	}
+	int DrawParamaterDropdown(SerializedProperty name, string label)
+	{
+		//Name
+		EditorGUILayout.BeginHorizontal();
+		EditorGUILayout.PrefixLabel(label);
+		var index = -1;
+		if(parameterNames != null)
+		{
+			//Find index
+			EditorGUI.BeginChangeCheck();
+			index = Array.IndexOf(parameterNames, name.stringValue);
+			index = EditorGUILayout.Popup(index, parameterNames);
+			if(EditorGUI.EndChangeCheck() && index >= 0)
+				name.stringValue = parameterNames[index];
+		}
+		name.stringValue = EditorGUILayout.TextField(name.stringValue);
+		EditorGUILayout.EndHorizontal();
+
+		if(index < 0)
+			EditorGUILayout.HelpBox($"Parameter '{name.stringValue}' not found. Make sure you defined in the Animator window's Parameters tab.", MessageType.Warning);
+
+		return index;
 	}
 }
 #endif
