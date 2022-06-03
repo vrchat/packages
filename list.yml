@@ -31,3 +31,6 @@ packages:
 - https://raw.githubusercontent.com/vrchat/packages/3.0.7/packages/com.vrchat.base/package.json
 - https://raw.githubusercontent.com/vrchat/packages/3.0.7/packages/com.vrchat.worlds/package.json
 - https://raw.githubusercontent.com/vrchat/packages/3.0.7/packages/com.vrchat.avatars/package.json
+- https://raw.githubusercontent.com/vrchat/packages/3.0.8/packages/com.vrchat.base/package.json
+- https://raw.githubusercontent.com/vrchat/packages/3.0.8/packages/com.vrchat.worlds/package.json
+- https://raw.githubusercontent.com/vrchat/packages/3.0.8/packages/com.vrchat.avatars/package.json
