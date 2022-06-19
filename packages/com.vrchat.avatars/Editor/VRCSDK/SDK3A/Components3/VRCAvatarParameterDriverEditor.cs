@@ -39,33 +39,35 @@ public class AvatarParameterDriverEditor : Editor
 		Rect dummyRect = new Rect(0, 0, 0, 0);
 		var parameters = serializedObject.FindProperty("parameters");
 		Parameter parameter = driver.parameters[index];
-        switch (parameter.type)
-        {
-            case ChangeType.Set:
+		switch (parameter.type)
+		{
+			case ChangeType.Set:
 				height += EditorGUIUtility.singleLineHeight * 1.25f; // name
 				if (DrawParamaterDropdown(parameters.GetArrayElementAtIndex(index).FindPropertyRelative("name"), "", ref dummyRect, false) < 0) {
 					HelpBoxHeight(ref height);
 				}
 				height += EditorGUIUtility.singleLineHeight * 1.25f; // value
 				break;
-            case ChangeType.Add:
+			case ChangeType.Add:
 				height += EditorGUIUtility.singleLineHeight * 1.25f; // name
 				if (DrawParamaterDropdown(parameters.GetArrayElementAtIndex(index).FindPropertyRelative("name"), "", ref dummyRect, false) < 0) {
 					HelpBoxHeight(ref height);
 				}
 				height += EditorGUIUtility.singleLineHeight * 1.25f; // value
 				break;
-            case ChangeType.Random:
+			case ChangeType.Random:
 				height += EditorGUIUtility.singleLineHeight * 1.25f; // name
 				if (DrawParamaterDropdown(parameters.GetArrayElementAtIndex(index).FindPropertyRelative("name"), "", ref dummyRect, false) < 0) {
 					HelpBoxHeight(ref height);
 				}
 				height += EditorGUIUtility.singleLineHeight * 1.25f; // value
-				if (parameterTypes[IndexOf(parameterNames, parameter.name)] == AnimatorControllerParameterType.Int || parameterTypes[IndexOf(parameterNames, parameter.name)] == AnimatorControllerParameterType.Float) {
+				if (IndexOf(parameterNames, parameter.name) == -1) {
+					height += EditorGUIUtility.singleLineHeight * 1.25f; // value 2
+				} else if (parameterTypes[IndexOf(parameterNames, parameter.name)] == AnimatorControllerParameterType.Int || parameterTypes[IndexOf(parameterNames, parameter.name)] == AnimatorControllerParameterType.Float) {
 					height += EditorGUIUtility.singleLineHeight * 1.25f; // value 2
 				}
 				break;
-            case ChangeType.Copy:
+			case ChangeType.Copy:
 				height += EditorGUIUtility.singleLineHeight * 1.25f; // source
 				if (DrawParamaterDropdown(parameters.GetArrayElementAtIndex(index).FindPropertyRelative("source"), "", ref dummyRect, false) < 0) {
 					HelpBoxHeight(ref height);
@@ -86,11 +88,11 @@ public class AvatarParameterDriverEditor : Editor
 					height += EditorGUIUtility.singleLineHeight * 1.25f; // destination range
 				}
 				break;
-            default:
-                break;
-        }
+			default:
+				break;
+		}
 		void HelpBoxHeight(ref float height1)
-        {
+		{
 			height1 += EditorGUIUtility.singleLineHeight * 1.25f * 2; // help box when parameter is empty (no parameters are present in animator)
 		}
 
