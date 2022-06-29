@@ -1,5 +1,8 @@
-﻿using UnityEngine;
+﻿using System;
+using System.Collections.Generic;
+using UnityEngine;
 using UnityEditor;
+using UnityEditor.Animations;
 using ExpressionParameters = VRC.SDK3.Avatars.ScriptableObjects.VRCExpressionParameters;
 using ExpressionParameter = VRC.SDK3.Avatars.ScriptableObjects.VRCExpressionParameters.Parameter;
 using UnityEngine.UI;
@@ -10,6 +13,7 @@ public class VRCExpressionParametersEditor : Editor
 	int selected = -1;
 	GUIStyle boxNormal;
 	GUIStyle boxSelected;
+	private AnimatorController controllerToTransfer;
 
 	void InitStyles()
 	{
@@ -171,8 +175,84 @@ public class VRCExpressionParametersEditor : Editor
 					InitExpressionParameters(true);
 				}
 			}
+
+			controllerToTransfer = (AnimatorController)EditorGUILayout.ObjectField(controllerToTransfer, typeof(AnimatorController), true, new GUILayoutOption[]{});
+			GUI.enabled = (object)controllerToTransfer != null;
+			if (GUILayout.Button("Transfer Parameters to Animator"))
+			{
+				if (EditorUtility.DisplayDialogComplex("Warning", $"Are you sure you want to add Parameters '{FindAnimatorParameterMatch()}' to the Animator \"{controllerToTransfer.name}\"?", "Transfer", "Cancel", "") == 0)
+				{
+					TransferToAnimatorController();
+				}
+			}
 		}
 		serializedObject.ApplyModifiedProperties();
+	}
+
+	private string FindAnimatorParameterMatch() {
+		var expressionParameters = target as ExpressionParameters;
+		List<AnimatorControllerParameter> controllerParamsList = new List<AnimatorControllerParameter>(controllerToTransfer.parameters);
+		List<string> matchingParameters = new List<string>();
+
+		foreach (var parameter in expressionParameters.parameters) {
+			bool parameterExists = false;
+			//AnimatorControllerParameter foundControllerParameter = null;
+			foreach (var controllerParameter in controllerToTransfer.parameters) {
+				if (controllerParameter.name == parameter.name) {
+					parameterExists = true;
+					//foundControllerParameter = controllerParameter;
+					break;
+				}
+			}
+
+			if (!parameterExists) {
+				matchingParameters.Add(parameter.name);
+			}
+		}
+
+		return string.Join(", ", matchingParameters);
+	}
+
+	private void TransferToAnimatorController() {
+		var expressionParameters = target as ExpressionParameters;
+		List<AnimatorControllerParameter> controllerParamsList = new List<AnimatorControllerParameter>(controllerToTransfer.parameters);
+		
+		foreach (var parameter in expressionParameters.parameters) {
+			bool parameterExists = false;
+			//AnimatorControllerParameter foundControllerParameter = null;
+			foreach (var controllerParameter in controllerToTransfer.parameters) {
+				if (controllerParameter.name == parameter.name) {
+					parameterExists = true;
+					//foundControllerParameter = controllerParameter;
+					break;
+				}
+			}
+
+			if (!parameterExists) {
+				controllerParamsList.Add(new AnimatorControllerParameter() {
+					name = parameter.name, 
+					defaultBool = parameter.defaultValue > 0.5, 
+					defaultFloat = parameter.defaultValue, 
+					defaultInt = (int)Math.Floor(parameter.defaultValue), 
+					type = VRCType2UnityType(parameter.valueType)
+				});
+			}
+		}
+
+		controllerToTransfer.parameters = controllerParamsList.ToArray();
+	}
+
+	private AnimatorControllerParameterType VRCType2UnityType(ExpressionParameters.ValueType type) {
+		switch (type) {
+			case ExpressionParameters.ValueType.Int:
+				return AnimatorControllerParameterType.Int;
+			case ExpressionParameters.ValueType.Float:
+				return AnimatorControllerParameterType.Float;
+			case ExpressionParameters.ValueType.Bool:
+				return AnimatorControllerParameterType.Bool;
+			default:
+				throw new ArgumentOutOfRangeException(nameof(type), type, null);
+		}
 	}
 	void DrawExpressionParameter(SerializedProperty parameters, int index)
 	{
