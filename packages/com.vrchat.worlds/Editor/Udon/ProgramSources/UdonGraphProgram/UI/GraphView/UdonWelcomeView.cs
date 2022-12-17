@@ -38,7 +38,7 @@ namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI.GraphView
             {
                 name = "header-message",
                 text =
-                    "The Udon Graph is your gateway to creating amazing things in VRChat.\nCheck out the Readme and UdonExampleScene in the VRChat Examples folder to get started."
+                    "The Udon Graph is your gateway to creating amazing things in VRChat.\nCheck out the UdonExampleScene in the Worlds/Samples folder to get started."
             });
 
             var mainContainer = new VisualElement()
