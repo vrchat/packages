@@ -146,6 +146,7 @@ namespace VRC.SDK3.Avatars
                 foreach (var db in dbList)
                 {
                     var data = new PhysBoneMigration.DynamicBoneData();
+                    data.enabled = ((MonoBehaviour)db).enabled;
                     data.gameObject = db.gameObject;
                     data.root = (Transform)TypeDynamicBone.GetField("m_Root").GetValue(db);
                     data.exclusions = (List<Transform>)TypeDynamicBone.GetField("m_Exclusions").GetValue(db);
