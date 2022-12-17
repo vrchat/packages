@@ -10,6 +10,7 @@ namespace VRC.SDKBase.Editor
         private static string PackageSettingsPath = Path.Combine(new DirectoryInfo(Application.dataPath).Parent?.FullName, "ProjectSettings", "Packages");
         public bool samplesImported = false;
         public bool allowVRCPackageChanges = false;
+        public bool samplesHintCreated = false;
 
         protected internal static VRCPackageSettings Create()
         {

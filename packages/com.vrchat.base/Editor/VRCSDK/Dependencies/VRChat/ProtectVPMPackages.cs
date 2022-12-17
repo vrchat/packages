@@ -21,7 +21,7 @@ namespace VRC.SDKBase.Editor
             for (int i = 0; i < paths.Length; ++i)
             {
                 var path = paths[i];
-                var directories = path.Split('/'); // Todo: this is the separator on windows, is it the same on Linux & Mac?
+                var directories = path.Split(Path.DirectorySeparatorChar);
                 if (directories.Length >= 2)
                 {
                     var filename = Path.GetFileName(path);
