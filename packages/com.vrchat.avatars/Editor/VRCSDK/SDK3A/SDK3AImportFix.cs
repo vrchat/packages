@@ -27,7 +27,9 @@ namespace VRC.SDK3A.Editor
                 }
                 else
                 {
+#pragma warning disable 4014
                     ReloadSDK();
+#pragma warning restore 4014
                     File.WriteAllText(canaryFilePath, avatarsReimportedKey);
                 }
             }
@@ -36,7 +38,10 @@ namespace VRC.SDK3A.Editor
         [MenuItem("VRChat SDK/Samples/Avatar Dynamics Robot Avatar")]
         private static void OpenAvatarsExampleScene()
         {
-            EditorSceneManager.OpenScene(exampleScenePath);
+            if(EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+            {
+                EditorSceneManager.OpenScene(exampleScenePath);
+            }
         }
 
         public static async Task ReloadSDK()

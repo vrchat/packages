@@ -27,7 +27,9 @@ namespace VRC.SDK3.Editor
                 }
                 else
                 {
+#pragma warning disable 4014
                     ReloadSDK();
+#pragma warning restore 4014
                     File.WriteAllText(canaryFilePath, worldsReimportedKey);
                 }
             }
@@ -36,7 +38,10 @@ namespace VRC.SDK3.Editor
         [MenuItem("VRChat SDK/Samples/UdonExampleScene")]
         private static void OpenSampleUdonExampleScene()
         {
-            EditorSceneManager.OpenScene(exampleScenePath);
+            if(EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+            {
+                EditorSceneManager.OpenScene(exampleScenePath);
+            }
         }
 
         public static async Task ReloadSDK()
