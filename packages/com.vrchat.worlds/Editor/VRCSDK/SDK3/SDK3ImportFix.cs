@@ -1,7 +1,7 @@
-﻿using System.Collections;
+﻿using System.IO;
+using System.Threading.Tasks;
 using UnityEditor;
 using UnityEditor.SceneManagement;
-using UnityEngine.SceneManagement;
 using VRC.SDKBase.Editor.Source.Helpers;
 
 namespace VRC.SDK3.Editor
@@ -9,23 +9,27 @@ namespace VRC.SDK3.Editor
     [InitializeOnLoad]
     public class SDK3ImportFix
     {
-        private const string sdkReloadedKey = "SDK_RELOADED";
+        private const string worldsReimportedKey = "WORLDS_REIMPORTED";
 
         private const string exampleScenePath =
             "Packages/com.vrchat.worlds/Samples/UdonExampleScene/UdonExampleScene.unity";
-        
-        private static VRCPackageSettings _settings;
-        
+
         static SDK3ImportFix()
         {
-            EditorSceneManager.activeSceneChangedInEditMode += OnEditorSceneChanged;
-        }
-
-        private static void OnEditorSceneChanged(Scene arg0, Scene arg1)
-        {
-            if (!SessionState.GetBool(sdkReloadedKey, false))
+            // Skip if we've already checked for the canary file during this Editor Session
+            if (!SessionState.GetBool(worldsReimportedKey, false))
             {
-                EditorCoroutine.Start(ReloadSDK());
+                // Check for canary file in Library - package probably needs a reimport after a Library wipe
+                string canaryFilePath = Path.Combine("Library", worldsReimportedKey);
+                if (File.Exists(canaryFilePath))
+                {
+                    SessionState.SetBool(worldsReimportedKey, true);
+                }
+                else
+                {
+                    ReloadSDK();
+                    File.WriteAllText(canaryFilePath, worldsReimportedKey);
+                }
             }
         }
 
@@ -35,15 +39,15 @@ namespace VRC.SDK3.Editor
             EditorSceneManager.OpenScene(exampleScenePath);
         }
 
-        public static IEnumerator ReloadSDK()
+        public static async Task ReloadSDK()
         {
             // Set session key to true, limiting the reload to one run per session
-            SessionState.SetBool(sdkReloadedKey, true);
+            SessionState.SetBool(worldsReimportedKey, true);
             
             //Wait for project to finish compiling
             while (EditorApplication.isCompiling || EditorApplication.isUpdating)
             {
-                yield return null;
+                await Task.Delay(250);
             }
             
             ReloadUtil.ReloadSDK();
