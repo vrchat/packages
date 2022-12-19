@@ -15,17 +15,27 @@ using TMPro;
 #endif
 #if UDON
 using VRC.Udon;
-
 #endif
 #if !VRC_CLIENT && UNITY_EDITOR && VRC_SDK_VRCSDK3
 using UnityEditor;
 using UnityEngine.SceneManagement;
+#endif
+#if UNITY_EDITOR && VRC_CLIENT
+using System.Text;
+using UnityEditor;
 #endif
 
 namespace VRC.Core
 {
     public static class UnityEventFilter
     {
+        public class TypeInfo
+        {
+            public Type Type;
+            public List<FieldInfo> fields = new List<FieldInfo>();
+            public List<FieldInfo> subFields = new List<FieldInfo>();
+        }
+
         // These types are will always be prohibited even if they are derived from an allowed type. 
         private static readonly HashSet<Type> _prohibitedUIEventTargetTypes = new HashSet<Type>
         {
@@ -42,6 +52,9 @@ namespace VRC.Core
             new Lazy<Dictionary<Type, AllowedMethodFilter>>(GetRuntimeUnityEventTargetAccessFilterDictionary);
 
         private static Dictionary<Type, AllowedMethodFilter> AllowedUnityEventTargetTypes => _allowedUnityEventTargetTypes.Value;
+
+        private static Lazy<Dictionary<Type, TypeInfo>> _typesWithUnityEventFields = new Lazy<Dictionary<Type, TypeInfo>>(InitTypesWithUnityEvents);
+        private static Dictionary<Type, TypeInfo> TypesWithUnityEvents = _typesWithUnityEventFields.Value;
 
         private static readonly Lazy<int> _debugLevel = new Lazy<int>(InitializeLogging);
         private static int DebugLevel => _debugLevel.Value;
@@ -111,6 +124,85 @@ namespace VRC.Core
         }
         #endif
 
+        private static Dictionary<Type, TypeInfo> InitTypesWithUnityEvents()
+        {
+            Dictionary<Type, TypeInfo> releventTypes = new Dictionary<Type, TypeInfo>();
+            List<Type> checkedTypes = new List<Type>();
+
+            foreach (Assembly assembly in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                foreach (Type type in assembly.GetTypes())
+                {
+                    if (typeof(Component).IsAssignableFrom(type) == false)
+                    {
+                        continue;
+                    }
+
+                    bool GetTypeInfo(Type baseType)
+                    {
+                        if (releventTypes.ContainsKey(baseType))
+                        {
+                            return true;
+                        }
+
+                        if (checkedTypes.Contains(baseType))
+                        {
+                            return false;
+                        }
+                        checkedTypes.Add(baseType);
+
+                        TypeInfo typeInfo = new TypeInfo { Type = baseType };
+
+                        foreach (FieldInfo fieldInfo in baseType.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.FlattenHierarchy))
+                        {
+                            Type t = fieldInfo.FieldType;
+
+                            if (typeof(UnityEventBase).IsAssignableFrom(t))
+                            {
+                                typeInfo.fields.Add(fieldInfo);
+                            }
+                            else if ((t.IsClass || t.IsValueType) && !t.IsPrimitive && !t.IsEnum)
+                            {
+                                if (GetTypeInfo(t))
+                                {
+                                    typeInfo.subFields.Add(fieldInfo);
+                                }
+                            }
+                        }
+
+                        if (typeInfo.fields.Count > 0 || typeInfo.subFields.Count > 0)
+                        {
+                            releventTypes.Add(baseType, typeInfo);
+                            return true;
+                        }
+                        else
+                        {
+                            return false;
+                        }
+                    }
+
+                    GetTypeInfo(type);
+                }
+            }
+
+            return releventTypes;
+        }
+
+        #if UNITY_EDITOR && VRC_CLIENT
+        [MenuItem("VRChat/Tools/Log UnityEvent Types")]
+        private static void LogUnityEventTypes()
+        {
+            StringBuilder stringBuilder = new StringBuilder();
+            stringBuilder.AppendLine("Types with UnityEvent Fields:");
+            foreach(Type type in TypesWithUnityEvents.Select(ti => ti.Key).OrderBy(t => t.FullName))
+            {
+                stringBuilder.AppendLine(type.FullName);
+            }
+
+            UnityEngine.Debug.Log(stringBuilder.ToString());
+        }
+        #endif
+
         private static int InitializeLogging()
         {
             int hashCode = typeof(UnityEventFilter).GetHashCode();
@@ -122,63 +214,38 @@ namespace VRC.Core
         [PublicAPI]
         public static void FilterEvents(GameObject gameObject)
         {
-            FilterUIEvents(gameObject);
-            FilterEventTriggerEvents(gameObject);
+            FilterUnityEvents(gameObject);
             FilterAnimatorEvents(gameObject);
         }
 
         [PublicAPI]
         public static void FilterEvents(List<GameObject> gameObjects)
         {
-            FilterUIEvents(gameObjects);
-            FilterEventTriggerEvents(gameObjects);
+            FilterUnityEvents(gameObjects);
             FilterAnimatorEvents(gameObjects);
         }
 
         [PublicAPI]
-        public static void FilterUIEvents(GameObject gameObject)
+        public static void FilterUnityEvents(GameObject gameObject)
         {
-            List<UIBehaviour> uiBehaviours = new List<UIBehaviour>();
-            gameObject.GetComponentsInChildren(true, uiBehaviours);
+            List<Component> components = new List<Component>();
+            gameObject.GetComponentsInChildren(true, components);
 
-            FilterUIBehaviourEvents(uiBehaviours);
+            FilterUnityEvents(components);
         }
 
         [PublicAPI]
-        public static void FilterUIEvents(List<GameObject> gameObjects)
+        public static void FilterUnityEvents(List<GameObject> gameObjects)
         {
-            HashSet<UIBehaviour> uiBehaviours = new HashSet<UIBehaviour>();
-            List<UIBehaviour> uiBehavioursWorkingList = new List<UIBehaviour>();
+            HashSet<Component> components = new HashSet<Component>();
+            List<Component> componentsWorkingList = new List<Component>();
             foreach(GameObject gameObject in gameObjects)
             {
-                gameObject.GetComponentsInChildren(true, uiBehavioursWorkingList);
-                uiBehaviours.UnionWith(uiBehavioursWorkingList);
+                gameObject.GetComponentsInChildren(true, componentsWorkingList);
+                components.UnionWith(componentsWorkingList);
             }
 
-            FilterUIBehaviourEvents(uiBehaviours);
-        }
-
-        [PublicAPI]
-        public static void FilterEventTriggerEvents(GameObject gameObject)
-        {
-            List<EventTrigger> eventTriggers = new List<EventTrigger>();
-            gameObject.GetComponentsInChildren(true, eventTriggers);
-
-            FilterEventTriggerEvents(eventTriggers);
-        }
-
-        [PublicAPI]
-        public static void FilterEventTriggerEvents(List<GameObject> gameObjects)
-        {
-            HashSet<EventTrigger> eventTriggers = new HashSet<EventTrigger>();
-            List<EventTrigger> eventTriggerWorkingList = new List<EventTrigger>();
-            foreach(GameObject gameObject in gameObjects)
-            {
-                gameObject.GetComponentsInChildren(true, eventTriggerWorkingList);
-                eventTriggers.UnionWith(eventTriggerWorkingList);
-            }
-
-            FilterEventTriggerEvents(eventTriggers);
+            FilterUnityEvents(components);
         }
 
         [PublicAPI]
@@ -204,162 +271,88 @@ namespace VRC.Core
             FilterAnimatorEvents(animators);
         }
 
-        private static void FilterUIBehaviourEvents(IEnumerable<UIBehaviour> uiBehaviours)
+        private static void FilterUnityEvents(ICollection<Component> components)
         {
-            Dictionary<Type, List<UIBehaviour>> uiBehavioursByType = new Dictionary<Type, List<UIBehaviour>>();
-            foreach(UIBehaviour uiBehaviour in uiBehaviours)
+            if (components.Count == 0)
             {
-                if(uiBehaviour == null)
-                {
-                    continue;
-                }
-
-                Type uiBehaviourType = uiBehaviour.GetType();
-                if(!uiBehavioursByType.TryGetValue(uiBehaviourType, out List<UIBehaviour> uiBehavioursOfType))
-                {
-                    uiBehavioursByType.Add(uiBehaviourType, new List<UIBehaviour> {uiBehaviour});
-                    continue;
-                }
-
-                uiBehavioursOfType.Add(uiBehaviour);
-            }
-
-            foreach(KeyValuePair<Type, List<UIBehaviour>> uiBehavioursOfTypeKvp in uiBehavioursByType)
-            {
-                List<FieldInfo> unityEventFieldInfos = new List<FieldInfo>();
-                Type currentType = uiBehavioursOfTypeKvp.Key;
-                while(currentType != null)
-                {
-                    FieldInfo[] fieldInfos = currentType.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.FlattenHierarchy);
-                    foreach(FieldInfo fieldInfo in fieldInfos)
-                    {
-                        if(typeof(UnityEventBase).IsAssignableFrom(fieldInfo.FieldType))
-                        {
-                            unityEventFieldInfos.Add(fieldInfo);
-                        }
-                    }
-
-                    currentType = currentType.BaseType;
-                }
-
-                if(unityEventFieldInfos.Count <= 0)
-                {
-                    continue;
-                }
-
-                FieldInfo persistentCallsGroupFieldInfo = typeof(UnityEventBase).GetField("m_PersistentCalls", BindingFlags.Instance | BindingFlags.NonPublic);
-                if(persistentCallsGroupFieldInfo == null)
-                {
-                    VerboseLog($"Could not find 'm_PersistentCalls' on UnityEventBase.");
-                    return;
-                }
-
-                foreach(UIBehaviour uiBehaviour in uiBehavioursOfTypeKvp.Value)
-                {
-                    VerboseLog($"Checking '{uiBehaviour.name} for UI Events.", uiBehaviour);
-                    foreach(FieldInfo unityEventFieldInfo in unityEventFieldInfos)
-                    {
-                        VerboseLog($"Checking field '{unityEventFieldInfo.Name}' on '{uiBehaviour.name}.", uiBehaviour);
-                        UnityEventBase unityEventBase = unityEventFieldInfo.GetValue(uiBehaviour) as UnityEventBase;
-                        if(unityEventBase == null)
-                        {
-                            VerboseLog($"Null '{unityEventFieldInfo.Name}' UnityEvent on {uiBehaviour.name}.", uiBehaviour);
-                            continue;
-                        }
-
-                        int numEventListeners = unityEventBase.GetPersistentEventCount();
-                        VerboseLog($"There are '{numEventListeners}' on event '{unityEventFieldInfo.Name}' on '{uiBehaviour.name}.", uiBehaviour);
-                        for(int index = 0; index < numEventListeners; index++)
-                        {
-                            string persistentMethodName = unityEventBase.GetPersistentMethodName(index);
-
-                            UnityEngine.Object persistentTarget = unityEventBase.GetPersistentTarget(index);
-                            if(persistentTarget == null)
-                            {
-                                VerboseLog($"The target for listener '{index}' on event '{unityEventFieldInfo.Name}' on '{uiBehaviour.name} is null.", uiBehaviour);
-                                continue;
-                            }
-
-                            if(IsTargetPermitted(persistentTarget, persistentMethodName))
-                            {
-                                VerboseLog(
-                                    $"Allowing event '{unityEventFieldInfo.Name}' on '{uiBehaviour.name}' to call '{persistentMethodName}' on target '{persistentTarget.name}'.",
-                                    uiBehaviour);
-
-                                continue;
-                            }
-
-                            LogRemoval(
-                                $"Events on '{uiBehaviour.name}' were removed because one of them targeted a prohibited type '{persistentTarget.GetType().Name}', method '{persistentMethodName}' or object '{persistentTarget.name}'.",
-                                uiBehaviour);
-
-                            unityEventFieldInfo.SetValue(uiBehaviour, Activator.CreateInstance(unityEventBase.GetType()));
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-
-        private static void FilterEventTriggerEvents(IEnumerable<EventTrigger> eventTriggers)
-        {
-            FieldInfo persistentCallsGroupFieldInfo = typeof(UnityEventBase).GetField("m_PersistentCalls", BindingFlags.Instance | BindingFlags.NonPublic);
-            if(persistentCallsGroupFieldInfo == null)
-            {
-                VerboseLog($"Could not find 'm_PersistentCalls' on UnityEventBase.");
                 return;
             }
 
-            foreach(EventTrigger eventTrigger in eventTriggers)
-            {
-                VerboseLog($"Checking '{eventTrigger.name} for Unity Events.", eventTrigger);
+            HashSet<object> scannedObjects = new HashSet<object>();
 
-                List<EventTrigger.Entry> triggers = eventTrigger.triggers;
-                if(triggers.Count <= 0)
+            foreach (Component component in components)
+            {
+                if (!component || !TypesWithUnityEvents.TryGetValue(component.GetType(), out TypeInfo typeInfo))
                 {
                     continue;
                 }
 
-                for(int i = triggers.Count - 1; i >= 0; i--)
+                VerboseLog($"Checking {component.name} for UnityEvents.", component);
+
+                FilterUnityEvents(scannedObjects, typeInfo, component, component);
+            }
+        }
+
+        private static void FilterUnityEvents(HashSet<object> scannedObjects, TypeInfo typeInfo, object context, Component component)
+        {
+            foreach (FieldInfo unityEventFieldInfo in typeInfo.fields)
+            {
+                VerboseLog($"Checking field '{unityEventFieldInfo.Name}' on '{component.name}'.", component);
+                UnityEventBase unityEventBase = unityEventFieldInfo.GetValue(context) as UnityEventBase;
+                if (unityEventBase == null)
                 {
-                    EventTrigger.Entry entry = triggers[i];
-                    UnityEventBase unityEventBase = entry.callback;
-                    if(unityEventBase == null)
+                    VerboseLog($"Null '{unityEventFieldInfo.Name}' UnityEvent on '{component.name}'.", component);
+                    continue;
+                }
+
+                int numEventListeners = unityEventBase.GetPersistentEventCount();
+                VerboseLog($"There are '{numEventListeners}' on event '{unityEventFieldInfo.Name}' on '{component.name}.", component);
+                for (int index = 0; index < numEventListeners; index++)
+                {
+                    string persistentMethodName = unityEventBase.GetPersistentMethodName(index);
+
+                    UnityEngine.Object persistentTarget = unityEventBase.GetPersistentTarget(index);
+                    if (persistentTarget == null)
                     {
-                        VerboseLog($"Null '{entry.eventID}' UnityEvent on {eventTrigger.name}.", eventTrigger);
+                        VerboseLog($"The target for listener '{index}' on event '{unityEventFieldInfo.Name}' on '{component.name}' is null.", component);
                         continue;
                     }
 
-                    int numEventListeners = unityEventBase.GetPersistentEventCount();
-                    VerboseLog($"There are '{numEventListeners}' on event '{entry.eventID}' on '{eventTrigger.name}.", eventTrigger);
-                    for(int index = 0; index < numEventListeners; index++)
+                    if (IsTargetPermitted(persistentTarget, persistentMethodName))
                     {
-                        string persistentMethodName = unityEventBase.GetPersistentMethodName(index);
+                        VerboseLog(
+                            $"Allowing event '{unityEventFieldInfo.Name}' on '{component.name}' to call '{persistentMethodName}' on target '{persistentTarget.name}'.",
+                            component);
 
-                        UnityEngine.Object persistentTarget = unityEventBase.GetPersistentTarget(index);
-                        if(persistentTarget == null)
-                        {
-                            VerboseLog($"The target for listener '{index}' on event '{entry.eventID}' on '{eventTrigger.name} is null.", eventTrigger);
-                            continue;
-                        }
-
-                        if(IsTargetPermitted(persistentTarget, persistentMethodName))
-                        {
-                            VerboseLog(
-                                $"Allowing event '{entry.eventID}' on '{eventTrigger.name}' to call '{persistentMethodName}' on target '{persistentTarget.name}'.",
-                                eventTrigger);
-
-                            continue;
-                        }
-
-                        LogRemoval(
-                            $"Events on '{eventTrigger.name}' were removed because one of them targeted a prohibited type '{persistentTarget.GetType().Name}', method '{persistentMethodName}' or object '{persistentTarget.name}'.",
-                            eventTrigger);
-
-                        triggers.RemoveAt(i);
-                        break;
+                        continue;
                     }
+
+                    LogRemoval(
+                        $"Events on '{component.name}' were removed because one of them targeted a prohibited type '{persistentTarget.GetType().Name}', method '{persistentMethodName}' or object '{persistentTarget.name}'.",
+                        component);
+
+                    unityEventFieldInfo.SetValue(context, Activator.CreateInstance(unityEventBase.GetType()));
+                    break;
                 }
+            }
+
+            scannedObjects.Add(context);
+
+            foreach (FieldInfo subFieldInfo in typeInfo.subFields)
+            {
+                if (!_typesWithUnityEventFields.Value.TryGetValue(subFieldInfo.FieldType, out TypeInfo subTypeInfo))
+                {
+                    continue;
+                }
+
+                object newContext = subFieldInfo.GetValue(context);
+
+                if (newContext == null || scannedObjects.Contains(newContext))
+                {
+                    continue;
+                }
+
+                FilterUnityEvents(scannedObjects, subTypeInfo, newContext, component);
             }
         }
 

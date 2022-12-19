@@ -70,6 +70,8 @@ namespace VRC.Udon.Editor.ProgramSources
             }
         }
 
+        private bool _lastAssembleFailed = false;
+
         public sealed override void RunEditorUpdate(UdonBehaviour udonBehaviour, ref bool dirty)
         {
             if(program == null && serializedUdonProgramAsset != null)
@@ -77,7 +79,7 @@ namespace VRC.Udon.Editor.ProgramSources
                 program = serializedUdonProgramAsset.RetrieveProgram();
             }
 
-            if(program == null)
+            if(program == null && !_lastAssembleFailed)
             {
                 RefreshProgram();
             }
@@ -105,6 +107,13 @@ namespace VRC.Udon.Editor.ProgramSources
 
             RefreshProgramImpl();
 
+            _lastAssembleFailed = program == null;
+            
+            if (_lastAssembleFailed)
+            {
+                return;
+            }
+
             SerializedProgramAsset.StoreProgram(program);
             if (this != null)
             {
@@ -119,6 +128,7 @@ namespace VRC.Udon.Editor.ProgramSources
         [PublicAPI]
         protected void DrawInteractionArea(UdonBehaviour udonBehaviour)
         {
+            if (program == null) return;
             ImmutableArray<string> exportedSymbols = program.EntryPoints.GetExportedSymbols();
             if (exportedSymbols.Contains("_interact"))
             {

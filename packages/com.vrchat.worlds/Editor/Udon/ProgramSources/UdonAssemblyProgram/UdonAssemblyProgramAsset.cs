@@ -18,6 +18,8 @@ namespace VRC.Udon.Editor.ProgramSources
         [SerializeField]
         protected string assemblyError = null;
 
+        public string AssemblyError => assemblyError;
+
         public delegate void AssembleDelegate(bool success, string assembly);
         public event AssembleDelegate OnAssemble;
 

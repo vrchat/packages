@@ -1033,7 +1033,7 @@ namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI.GraphView
 
         public void Reload()
         {
-            if (IsReloading) return;
+            if (IsReloading || (graphProgramAsset != null && !string.IsNullOrWhiteSpace(graphProgramAsset.AssemblyError))) return;
             
             IsReloading = true;
 

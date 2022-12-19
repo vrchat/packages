@@ -5,6 +5,7 @@ using System.Linq;
 using JetBrains.Annotations;
 using Unity.Profiling;
 using UnityEngine;
+using VRC.SDK3;
 using VRC.SDK3.Components;
 using VRC.SDKBase;
 using VRC.Udon.Common;
@@ -849,6 +850,29 @@ namespace VRC.Udon
             if(!UdonManager.Instance.IsBlacklisted(other))
             {
                 RunEvent("_onTriggerStay2D", ("other", other));
+            }
+        }
+        
+        public void OnControllerColliderHit(ControllerColliderHit hit)
+        {
+            if (hit.gameObject == null) return;
+            
+            var tempPlayer = VRCPlayerApi.GetPlayerByGameObject(hit.gameObject);
+            if (Utilities.IsValid(tempPlayer))
+            {
+                ControllerColliderPlayerHit playerHit = new ControllerColliderPlayerHit()
+                {
+                    player = tempPlayer,
+                    moveDirection = hit.moveDirection,
+                    moveLength = hit.moveLength,
+                    normal = hit.normal,
+                    point = hit.point,
+                };
+                RunEvent("_onControllerColliderHitPlayer", ("hit", playerHit));
+            }
+            else if(!UdonManager.Instance.IsBlacklisted(hit.gameObject))
+            {
+                RunEvent("_onControllerColliderHit", ("hit", hit));
             }
         }
 

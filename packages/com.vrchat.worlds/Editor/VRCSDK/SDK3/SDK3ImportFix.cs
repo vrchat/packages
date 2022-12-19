@@ -13,6 +13,10 @@ namespace VRC.SDK3.Editor
 
         private const string exampleScenePath =
             "Packages/com.vrchat.worlds/Samples/UdonExampleScene/UdonExampleScene.unity";
+        private const string ccplayerhitScenePath = 
+            "Packages/com.vrchat.worlds/Samples/OnControllerColliderHitExampleScene/OnControllerColliderHitSampleScene.unity";
+        private const string minimapScenePath = 
+                        "Packages/com.vrchat.worlds/Samples/GraphicsBlitExampleScene/Minimap Sample Scene.unity";
 
         static SDK3ImportFix()
         {
@@ -41,6 +45,24 @@ namespace VRC.SDK3.Editor
             if(EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
             {
                 EditorSceneManager.OpenScene(exampleScenePath);
+            }
+        }
+        
+        [MenuItem("VRChat SDK/Samples/ControllerColliderPlayerHit")]
+        private static void OpenCCPlayerHitExampleScene()
+        {
+            if(EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+            {
+                EditorSceneManager.OpenScene(ccplayerhitScenePath);
+            }
+        }
+        
+        [MenuItem("VRChat SDK/Samples/Minimap")]
+        private static void OpenMinimapExampleScene()
+        {
+            if(EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+            {
+                EditorSceneManager.OpenScene(minimapScenePath);
             }
         }
 

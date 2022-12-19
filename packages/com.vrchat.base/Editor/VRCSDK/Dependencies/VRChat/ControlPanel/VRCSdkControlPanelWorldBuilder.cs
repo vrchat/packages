@@ -460,56 +460,6 @@ namespace VRC.SDKBase.Editor
                 }
 #endif
                 }
-                else
-                {
-                    // Check sibling game objects
-                    for (int idx = 0; idx < go.transform.parent.childCount; ++idx)
-                    {
-                        Transform t = go.transform.parent.GetChild(idx);
-                        if (t == go.transform)
-                            continue;
-
-#if VRC_SDK_VRCSDK2
-                    bool allowedType = (t.GetComponent<VRCSDK2.VRC_ObjectSync>()
-                        || t.GetComponent<VRCSDK2.VRC_SyncAnimation>()
-                        || t.GetComponent<VRCSDK2.VRC_SyncVideoPlayer>()
-                        || t.GetComponent<VRCSDK2.VRC_SyncVideoStream>());
-                    if (t.name != go.transform.name || allowedType) continue;
-#else
-                        if (t.name != go.transform.name) continue;
-#endif
-
-                        string path = t.name;
-                        Transform p = t.parent;
-                        while (p != null)
-                        {
-                            path = p.name + "/" + path;
-                            p = p.parent;
-                        }
-
-                        _builder.OnGUIWarning(scene,
-                            "Sibling objects share the same path, which may break network events: " + path,
-                            delegate
-                            {
-                                List<Object> gos = new List<Object>();
-                                for (int c = 0; c < go.transform.parent.childCount; ++c)
-                                    if (go.transform.parent.GetChild(c).name == go.name)
-                                        gos.Add(go.transform.parent.GetChild(c).gameObject);
-                                Selection.objects = gos.ToArray();
-                            },
-                            delegate
-                            {
-                                List<Object> gos = new List<Object>();
-                                for (int c = 0; c < go.transform.parent.childCount; ++c)
-                                    if (go.transform.parent.GetChild(c).name == go.name)
-                                        gos.Add(go.transform.parent.GetChild(c).gameObject);
-                                Selection.objects = gos.ToArray();
-                                for (int i = 0; i < gos.Count; ++i)
-                                    gos[i].name = gos[i].name + "-" + i.ToString("00");
-                            });
-                        break;
-                    }
-                }
             }
 
             // detect dynamic materials and prefabs with identical names (since these could break triggers)
