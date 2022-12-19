@@ -1,16 +1,13 @@
-#if UNITY_2019_3_OR_NEWER
 using UnityEditor.UIElements;
 using UnityEngine.UIElements;
-#else
-using UnityEditor.Experimental.UIElements;
-using UnityEngine.Experimental.UIElements;
-#endif
 using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using UnityEngine;
+using VRC.SDK3.Components;
+using VRC.SDK3.Components.Video;
 using VRC.SDKBase;
 using VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI.GraphView;
 using Object = UnityEngine.Object;
@@ -23,6 +20,12 @@ namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI
 
         static readonly MethodInfo createFieldMethod =
             typeof(UdonFieldFactory).GetMethod("CreateFieldSpecific", BindingFlags.Static | BindingFlags.Public);
+
+        static readonly HashSet<Type> customEnumTypes = new HashSet<Type>()
+        {
+            typeof(MirrorClearFlags),
+            typeof(VideoError)
+        };
 
         static UdonFieldFactory()
         {
@@ -56,6 +59,8 @@ namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI
             AddDrawer(typeof(Quaternion), typeof(QuaternionField));
             AddDrawer(typeof(LayerMask), typeof(LayerMaskField));
             AddDrawer(typeof(VRCUrl), typeof(VRCUrlField));
+            AddDrawer(typeof(MirrorClearFlags), typeof(MirrorReflectionClearFlagsField));
+            AddDrawer(typeof(VideoError), typeof(VideoErrorField));
         }
 
         static void AddDrawer(Type fieldType, Type drawerType)
@@ -138,11 +143,7 @@ namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI
             fieldDrawer.value = value;
             if (onValueChanged != null)
             {
-#if UNITY_2019_3_OR_NEWER
                 fieldDrawer.RegisterValueChangedCallback(
-#else
-				fieldDrawer.OnValueChanged(
-#endif
                     (e) => onValueChanged(e.newValue));
             }
 
@@ -151,7 +152,8 @@ namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI
 
         public static VisualElement CreateField(Type fieldType, object value, Action<object> onValueChanged)
         {
-            if (typeof(Enum).IsAssignableFrom(fieldType))
+            // Todo: see if we can remove this assignment altogether. Do we actually draw any other enum types?
+            if (typeof(Enum).IsAssignableFrom(fieldType) && !customEnumTypes.Contains(fieldType))
                 fieldType = typeof(Enum);
 
             if (fieldType.IsArray)

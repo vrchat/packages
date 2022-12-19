@@ -152,6 +152,10 @@ public partial class AvatarDescriptorEditor3 : Editor
                         haveGesture = true;
                         SetLayerMaskFromController(layer);
                     }
+                    if ((VRCAvatarDescriptor.AnimLayerType)type.enumValueIndex == VRCAvatarDescriptor.AnimLayerType.FX)
+                    {
+                        SetLayerMaskFromController(layer);
+                    }
                 }
 
                 if (!haveAdditive)
