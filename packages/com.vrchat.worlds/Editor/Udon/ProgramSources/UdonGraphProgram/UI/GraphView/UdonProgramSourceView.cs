@@ -1,42 +1,39 @@
-﻿#if UNITY_2019_3_OR_NEWER
-using UnityEngine.UIElements;
-#else
-using UnityEngine.Experimental.UIElements;
-#endif
+﻿using UnityEngine.UIElements;
 
 namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI.GraphView
 {
     public class UdonProgramSourceView : VisualElement
     {
         private UdonProgramAsset _asset;
-
-        private VisualElement _assemblyContainer;
-        private ScrollView _scrollView;
-        private Label _assemblyHeader;
-        private TextElement _assemblyField;
+        private readonly TextElement _assemblyField;
 
         public UdonProgramSourceView ()
         {
             // Create and add container and children to display latest Assembly
-            _assemblyContainer = new VisualElement() { name = "Container", };
-            _assemblyHeader = new Label("Udon Assembly")
+            VisualElement assemblyContainer = new VisualElement { name = "Container", };
+            Label assemblyHeader = new Label("Udon Assembly")
             {
-                name = "Header",
+                name = "Header"
             };
 
-            _scrollView = new ScrollView();
+            ScrollView scrollView = new ScrollView();
 
-            _assemblyField = new TextElement()
+            _assemblyField = new TextElement
             {
-                name = "AssemblyField",
+                name = "AssemblyField"
             };
 
-            _assemblyContainer.Add(_assemblyHeader);
-            _assemblyContainer.Add(_scrollView);
-            _assemblyContainer.Add(_assemblyField);
-            _scrollView.contentContainer.Add(_assemblyField);
+            assemblyContainer.Add(assemblyHeader);
+            assemblyContainer.Add(scrollView);
+            assemblyContainer.Add(_assemblyField);
+            scrollView.contentContainer.Add(_assemblyField);
 
-            Add(_assemblyContainer);
+            Add(assemblyContainer);
+            
+            // block dragging/moving
+            RegisterCallback((EventCallback<DragUpdatedEvent>) (e => e.StopPropagation()));
+            RegisterCallback((EventCallback<WheelEvent>) (e => e.StopPropagation()));
+            RegisterCallback((EventCallback<MouseDownEvent>) (e => e.StopPropagation()));
         }
 
         public void LoadAsset(UdonGraphProgramAsset asset)
@@ -49,9 +46,11 @@ namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI.GraphView
             _assemblyField.text = newValue;
         }
 
+        // ReSharper disable once UnusedMember.Global
         public void Unload()
         {
-            if(_asset != null)
+            UdonProgramAsset udonProgramAsset = _asset;
+            if(udonProgramAsset != null)
             {
                 _asset = null;
             }

@@ -3,25 +3,35 @@
 }
 
 Button {
-	background-image: resource("DarkButtonBG");
 }
 
 #UdonToolbar {
-	background-image: resource("ToolbarBG");
+	align-items: center;
+}
+
+#UdonToolbar > ToolbarButton {
+	border-right-width: 0;
 }
 
 Toolbar > ToolbarFlexSpacer.toolbarFlexSpacer {
-	background-image: resource("ToolbarBG");
 }
 
 Toolbar > ToolbarButton.toolbarButton {
-	background-image: resource("ToolbarButtonBG");
 	color:rgb(255,255,255);
 }
 
 Toolbar > UdonGraphStatus.toolbarButton {
-	background-image: resource("ToolbarButtonBG");
 	color:rgb(255,255,255);
+}
+
+Toolbar > .updateOrderField {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+}
+
+Toolbar > .updateOrderField > IntegerField {
+	min-width: 50px;
 }
 
 Toolbar .textElement {
@@ -37,18 +47,37 @@ Toolbar > ToolbarMenu.toolbarMenu:hover:active {
 	background-image:resource("DropdownBG");
 }
 
-Toolbar #assetName {
-	margin-top:0px;
-	margin-right:0px;
-	margin-bottom:0px;
-	margin-left:0px;
-	padding-top:3px;
-	padding-right:6px;
-	padding-bottom:4px;
-	padding-left:6px;
+#UdonToolbar .graphTab {
+	margin: 0;
+	padding: 3px 6px;
 	color:rgb(170,255,255);
-	background-image:resource("ToolbarBG");
+	background-color: rgba(0,0,0,0.2);
+	border-right-width: 1px;
+	flex-direction: row;
+	align-items: center;
+	flex: 1;
+	height: 100%;
 }
+
+#UdonToolbar .graphTab:hover {
+	background-color: rgba(0,0,0,0.5);
+}
+
+#UdonToolbar .graphTab.selected {
+	background-color: rgba(0,0,0,0.5);
+}
+
+#UdonToolbar .graphTab .graphTabClose {
+	background-image: none;
+	background-color: rgba(0,0,0,0);
+	border-width: 0;
+	padding: 5px;
+	display: flex;
+}
+#UdonToolbar .graphTab .graphTabClose:hover {
+	background-color: rgba(255,255,255,0.1);
+}
+
 
 #contentViewContainer {	
 	background-color:#ffcc33;
@@ -69,7 +98,7 @@ Toolbar #assetName {
 }
 
 UdonWelcomeView {
-	margin-top:16px;
+	margin-top:20px;
 	background-image: resource("UdonLogoAlpha");
 	background-color: #2D2D2D;
 	-unity-background-scale-mode: scale-to-fit;
@@ -84,10 +113,7 @@ UdonWelcomeView #intro {
 }
 
 UdonWelcomeView #header-message {
-	margin-right:20px;
-	margin-left:20px;
-	margin-top:5px;
-	margin-bottom:30px;
+	margin: 5px 20px 30px;
 	-unity-text-align:middle-left;
 	align-self:center;
 	font-size:16px;
@@ -128,10 +154,7 @@ UdonWelcomeView #tutorial #header {
 UdonWelcomeView #tutorial Toolbar {
 	height:30px;
 	justify-content:center;
-	border-top-right-radius:0;
-	border-top-left-radius:0;
-	border-bottom-right-radius:10px;
-	border-bottom-left-radius:10px;
+	border-radius: 0 0 10px 10px;
 }
 
 UdonWelcomeView #tutorial Toolbar #button-play{
@@ -257,6 +280,15 @@ Edge.edge {
 	--layer:0;
 }
 
+Edge.edge.highlighted {
+	opacity: 1;
+}
+
+Edge.edge.muted {
+	--edge-width:1;
+	opacity: 0.5;
+}
+
 UdonPort.flow > #connector {
 	width:16px;
 	height:16px;
@@ -352,26 +384,28 @@ SendCustomEventNode UdonPort.eventName TextField {
 	--layer:1;
 }
 
+.UdonNode.muted {
+	opacity: 0.5;
+}
+
+.UdonNode.highlighted {
+	opacity: 1;
+}
+
 .UdonNode #title-container {
 	flex:1;
 }
 
 .UdonNode Label#title-label {
 	flex:1;
-	margin-left:5px;
-	margin-right:6px;
-	margin-bottom: 3px;
-	margin-top:0px;
+	margin: 0 6px 3px 5px;
 	-unity-text-align:middle-left;
 	color:rgb(255,255,255);
 	font-size:16px;
 }
 
 .UdonNode #subtitle {
-	margin-left:5px;
-	margin-right:6px;
-	margin-top:2px;
-	margin-bottom: 0px;
+	margin: 2px 6px 0 5px;
 	color:rgb(150,150,150);
 	font-size:10px;
 }
@@ -528,13 +562,10 @@ UdonParameterProperty {
 }
 
 UdonParameterProperty>Toggle, UdonParameterProperty>VisualElement {
-	padding-top:5px;
-	padding-bottom:5px;
 	background-color:#333;
 	margin-left:4px;
-	padding-left:3px;
 	margin-right:4px;
-	padding-right:3px;
+	padding: 5px 3px;
 	flex-direction: row;
 }
 
@@ -552,10 +583,19 @@ UdonParameterProperty PopupField {
 	padding-top: 2px;
 }
 
+#Parameters {
+	border-color: rgba(0,0,0,0);
+}
+
+#Parameters.selected {
+	border-color: rgba(0,0,0,0);
+}
+
 #Parameters.blackboard > .mainContainer > #content > #header > #labelContainer > #titleLabel {
-	margin-left:10px;
-	margin-top:5px;
-	font-size:18px;
+	font-size: 13px;
+	margin-left: 5px;
+	margin-top: 2px;
+	margin-bottom: 2px;
 }
 
 #Parameters #header Button {
@@ -600,13 +640,19 @@ UdonParameterField Image {
 	background-color: #ffffff;
 }
 
-UdonMinimap {
-	background-color:rgba(0,0,0,0.75);
-	border-radius:6px;
+UdonMinimap.graphElement {
+	background-color:rgba(0,0,0,0.6);
+	width: 217px;
+	height: 100px;
+	border-radius: 1px;
+	padding: 2px;
 }
 
 UdonGraphStatus {
 	width:36px;
+	margin-right: -2px;
+	margin-left: 0;
+	height: 20px;
 }
 UdonGraphStatus #Content {
 	color:rgb(255,255,255);
@@ -619,6 +665,9 @@ UdonProgramSourceView {
 	align-self:flex-end;
 	flex:1;
 	width:300px;
+	top: 48px;
+	position: absolute;
+	height: 100%;
 }
 
 UdonProgramSourceView #Container {
@@ -638,23 +687,14 @@ UdonProgramSourceView #AssemblyField {
 	width:300px;
 	background-color:rgba(30,30,30, 1);
 	color:rgb(255,255,255);
-	padding-top:10px;
-	padding-right:10px;
-	padding-bottom:10px;
-	padding-left:10px;
+	padding: 10px;
 	white-space: normal;
 }
 
 .UdonValueField {
 	min-height: 15px;
-	margin-left: 4px;
-	margin-top:2px;
-	margin-right:4px;
-	margin-bottom: 2px;
-	padding-left:3px;
-	padding-top:1px;
-	padding-right:3px;
-	padding-bottom: 2px;
+	margin: 2px 4px;
+	padding: 1px 3px 2px;
 	color: #B4B4B4;
 	cursor: text;
 	overflow: hidden;
@@ -675,4 +715,28 @@ UdonProgramSourceView #AssemblyField {
 
 UdonPort > .unity-base-field {
 	flex-direction: column;
+}
+
+UdonVariablesBlackboard.blackboard {
+	border-radius: 0;
+}
+
+
+UdonVariablesBlackboard.blackboard > .mainContainer > #content > #header > #addButton.udonVariableAddButton {
+	font-size: 12px;
+	margin-top: 1px;
+}
+
+UdonVariablesBlackboard.blackboard > .mainContainer > #content > #header {
+	border-top-left-radius: 0;
+	border-top-right-radius: 0;
+}
+
+.udonSearchUnderlay {
+	width: 100%;
+	height: 100%;
+	top: 0;
+	left: 0;
+	position: absolute;
+	background-color: rgba(255,255,255,0);
 }

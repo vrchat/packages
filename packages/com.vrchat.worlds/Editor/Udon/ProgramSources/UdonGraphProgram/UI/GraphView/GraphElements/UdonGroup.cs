@@ -1,12 +1,8 @@
-﻿#if UNITY_2019_3_OR_NEWER
-using UnityEditor.Experimental.GraphView;
+﻿using UnityEditor.Experimental.GraphView;
 using UnityEngine.UIElements;
-#else
-using UnityEditor.Experimental.UIElements.GraphView;
-using UnityEngine.Experimental.UIElements;
-#endif
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEditor;
 using UnityEngine;
 
@@ -14,25 +10,29 @@ namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI.GraphView
 {
     public class UdonGroup : Group, IUdonGraphElementDataProvider
     {
-        public string uid { get => _uid; set => _uid = value; }
-        private CustomData _customData = new CustomData();
-        private UdonGraph _graph;
-        private string _uid;
+        public Action UpdateGraphGroups;
+        private string Uid { get; set; }
+
+        private readonly CustomData _customData = new CustomData();
+        private readonly UdonGraph _graph;
         private const int GROUP_LAYER = -1;
 
         public static UdonGroup Create(string value, Rect position, UdonGraph graph)
         {
-            var group = new UdonGroup("", graph);
-
-            group.uid = Guid.NewGuid().ToString();
+            var group = new UdonGroup("", graph)
+            {
+                Uid = Guid.NewGuid().ToString()
+            };
 
             // make sure rect size is not 0
             position.width = position.width > 0 ? position.width : 128;
             position.height = position.height > 0 ? position.height : 128;
 
-            group._customData.uid = group.uid;
+            group._customData.uid = group.Uid;
             group._customData.layout = position;
             group._customData.title = value;
+            group._customData.layer = GROUP_LAYER;
+            group._customData.elementTypeColor = Color.black;
 
             return group;
         }
@@ -46,7 +46,7 @@ namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI.GraphView
         // current order of operations issue when creating a group from the context menu means this isn't set until first save. This allows us to force it.
         public void UpdateDataId()
         {
-            _customData.uid = uid;
+            _customData.uid = Uid;
         }
 
         // Build a Group from jsonData, save to userData
@@ -63,6 +63,16 @@ namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI.GraphView
             
             // listen for changes on child elements
             RegisterCallback<GeometryChangedEvent>(OnGeometryChanged);
+        }
+
+        public sealed override string title
+        {
+            get => base.title;
+            set
+            {
+                base.title = value;
+                UpdateGraphGroups?.Invoke();
+            }
         }
 
         private void OnGeometryChanged(GeometryChangedEvent evt)
@@ -82,7 +92,7 @@ namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI.GraphView
                     _customData.uid = Guid.NewGuid().ToString();
                 }
 
-                uid = _customData.uid;
+                Uid = _customData.uid;
 
                 // Add all elements from graph to self
                 var childUIDs = _customData.containedElements;
@@ -129,9 +139,26 @@ namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI.GraphView
         public override void UpdatePresenterPosition()
         {
             base.UpdatePresenterPosition();
-            Rect layout = GraphElementExtension.GetSnappedRect(GetPosition());
-            base.SetPosition(layout);
+            Rect snappedRect = GraphElementExtension.GetSnappedRect(GetPosition());
+            base.SetPosition(snappedRect);
             SaveNewData();
+        }
+
+        public void SelectGroup()
+        {
+            _graph.ClearSelection();
+            // groups exist on a separate layer and fairly opaque from an actual graph view, so it doesn't report them in the `GetElementByGuid`
+            // so we force-select them via UI Elements ways
+            _graph.AddToSelection(_graph.contentViewContainer.Query<UdonGroup>().Where(g => g.Equals(this)).First());
+            var childUIDs = _customData.containedElements;
+            if (childUIDs.Count > 0)
+            {
+                foreach (var item in childUIDs)
+                {
+                    _graph.AddToSelection( _graph.GetElementByGuid(item));
+                }
+            }
+            _graph.FrameSelection();
         }
 
         // Save data to asset after rename
@@ -145,24 +172,26 @@ namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI.GraphView
 
         protected override void OnElementsAdded(IEnumerable<GraphElement> elements)
         {
-            base.OnElementsAdded(elements);
-            foreach (var element in elements)
+            //Enumerate first to prevent multiple-enumeration 
+            IEnumerable<GraphElement> graphElements = elements as GraphElement[] ?? elements.ToArray();
+            base.OnElementsAdded(graphElements);
+            foreach (var element in graphElements)
             {
                 if (!_customData.containedElements.Contains(element.GetUid()))
                 {
                     _customData.containedElements.Add(element.GetUid());
                 }
-            
-                // Set group variable on UdonNodes
-                if (element is UdonNode)
+
+                switch (element)
                 {
-                    (element as UdonNode).group = this;
-                    element.BringToFront();
-                }
-                
-                if (element is UdonComment)
-                {
-                    (element as UdonComment).group = this;
+                    // Set group variable on UdonNodes
+                    case UdonNode node:
+                        node.group = this;
+                        node.BringToFront();
+                        break;
+                    case UdonComment comment:
+                        comment.group = this;
+                        break;
                 }
             }
             SaveNewData();
@@ -170,37 +199,37 @@ namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI.GraphView
 
         protected override void OnElementsRemoved(IEnumerable<GraphElement> elements)
         {
-            base.OnElementsRemoved(elements);
-            foreach (var element in elements)
+            //Enumerate first to prevent multiple-enumeration
+            IEnumerable<GraphElement> graphElements = elements as GraphElement[] ?? elements.ToArray();
+            base.OnElementsRemoved(graphElements);
+            foreach (var element in graphElements)
             {
-                if (_customData.containedElements.Contains(element.GetUid()))
+                if (!_customData.containedElements.Contains(element.GetUid())) continue;
+                _customData.containedElements.Remove(element.GetUid());
+                switch (element)
                 {
-                    _customData.containedElements.Remove(element.GetUid());
-                    if (element is UdonNode)
-                    {
-                        (element as UdonNode).group = null;
-                    }
-                    else if (element is UdonComment)
-                    {
-                        (element as UdonComment).group = null;
-                    }
+                    case UdonNode node:
+                        node.group = null;
+                        break;
+                    case UdonComment comment:
+                        comment.group = null;
+                        break;
                 }
             }
 
             SaveNewData();
         }
 
-        public override bool AcceptsElement(GraphElement element, ref string reasonWhyNotAccepted)
-        {
-            return base.AcceptsElement(element, ref reasonWhyNotAccepted);
-        }
-
         public UdonGraphElementData GetData()
         {
-            return new UdonGraphElementData(UdonGraphElementType.UdonGroup, uid, EditorJsonUtility.ToJson(_customData));
+            return new UdonGraphElementData(UdonGraphElementType.UdonGroup, Uid, EditorJsonUtility.ToJson(_customData));
         }
 
-        public class CustomData
+        // CustomData is serialized in user assets, so we can't rename/modify/remove any of these variables 
+        // ReSharper disable InconsistentNaming
+        // ReSharper disable NotAccessedField.Local
+        // ReSharper disable FieldCanBeMadeReadOnly.Local
+        private class CustomData
         {
             public string uid;
             public Rect layout;
@@ -209,5 +238,8 @@ namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI.GraphView
             public int layer;
             public Color elementTypeColor;
         }
+        // ReSharper enable InconsistentNaming
+        // ReSharper enable NotAccessedField.Local
+        // ReSharper enable FieldCanBeMadeReadOnly.Local
     }
 }

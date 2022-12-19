@@ -19,7 +19,7 @@ namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI
         static readonly Dictionary<Type, Type> fieldDrawers = new Dictionary<Type, Type>();
 
         static readonly MethodInfo createFieldMethod =
-            typeof(UdonFieldFactory).GetMethod("CreateFieldSpecific", BindingFlags.Static | BindingFlags.Public);
+            typeof(UdonFieldFactory).GetMethod(nameof(CreateFieldSpecific), BindingFlags.Static | BindingFlags.Public);
 
         static readonly HashSet<Type> customEnumTypes = new HashSet<Type>()
         {

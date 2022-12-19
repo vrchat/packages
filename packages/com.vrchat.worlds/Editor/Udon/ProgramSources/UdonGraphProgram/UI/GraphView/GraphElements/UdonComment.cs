@@ -1,26 +1,18 @@
-#if UNITY_2019_3_OR_NEWER
 using UnityEditor.Experimental.GraphView;
 using UnityEngine.UIElements;
-using UnityEditor.UIElements;
-using UnityEngine.UIElements.StyleSheets;
-#else
-using UnityEditor.Experimental.UIElements.GraphView;
-using UnityEngine.Experimental.UIElements;
-using UnityEngine.Experimental.UIElements.StyleSheets;
-#endif
 using System;
 using UnityEditor;
 using UnityEngine;
 
 namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI.GraphView
 {
-    public class UdonComment : UdonGraphElement, IUdonGraphElementDataProvider
+    public sealed class UdonComment : UdonGraphElement, IUdonGraphElementDataProvider
     {
-        private VisualElement _mainContainer;
-        private Label _label;
-        private TextField _textField;
-        private CustomData _customData = new CustomData();
-        private UdonGraph _graph;
+        private readonly VisualElement _mainContainer;
+        private readonly Label _label;
+        private readonly TextField _textField;
+        private readonly CustomData _customData = new CustomData();
+        private readonly UdonGraph _graph;
         public UdonGroup group;
 
         // Called from Context menu and Reload
@@ -36,7 +28,7 @@ namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI.GraphView
             comment._customData.title = value;
             
             comment.UpdateFromData();
-            graph.MarkSceneDirty();
+            UdonGraph.MarkSceneDirty();
 
             return comment;
         }
@@ -46,7 +38,7 @@ namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI.GraphView
             var comment = new UdonComment(elementData.jsonData, graph);
             
             comment.UpdateFromData();
-            graph.MarkSceneDirty();
+            UdonGraph.MarkSceneDirty();
             
             return comment;
         }
@@ -77,9 +69,11 @@ namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI.GraphView
             _label.RegisterCallback<MouseDownEvent>(OnLabelClick);
             _mainContainer.Add(_label);
 
-            _textField = new TextField(1000, true, false, '*');
-            _textField.isDelayed = true;
-            
+            _textField = new TextField(1000, true, false, '*')
+            {
+                isDelayed = true
+            };
+
             // Support IME
             _textField.RegisterCallback<FocusInEvent>(evt =>{ Input.imeCompositionMode = IMECompositionMode.On;});
             _textField.RegisterCallback<FocusOutEvent>(evt =>
@@ -89,11 +83,7 @@ namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI.GraphView
                 SwitchToEditMode(false);
             });
 
-#if UNITY_2019_3_OR_NEWER
-            _textField.RegisterValueChangedCallback((evt) =>
-#else
-            _textField.OnValueChanged((evt) =>
-#endif
+            _textField.RegisterValueChangedCallback(evt =>
             {
                 SetText(evt.newValue);
                 SwitchToEditMode(false);
@@ -121,25 +111,17 @@ namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI.GraphView
                 SetText(_customData.title);
             }
         }
-#if UNITY_2019_3_OR_NEWER
-        protected override void OnCustomStyleResolved(ICustomStyle style)
+        protected override void OnCustomStyleResolved(ICustomStyle istyle)
         {
-            base.OnCustomStyleResolved(style);
-#else
-        protected override void OnStyleResolved(ICustomStyle style)
-        {
-            base.OnStyleResolved(style);
-#endif
-            // Something is forcing style! Resetting a few things here, grrr.
+            base.OnCustomStyleResolved(istyle);
+            // Something is forcing style! Resetting a few things here.
 
-            this.style.borderBottomWidth = 1;
+            style.borderBottomWidth = 1;
             
             var resizer = this.Q(null, "resizer");
-            if(resizer != null)
-            {
-                resizer.style.paddingTop = 0;
-                resizer.style.paddingLeft = 0;
-            }
+            if (resizer == null) return;
+            resizer.style.paddingTop = 0;
+            resizer.style.paddingLeft = 0;
         }
 
         public override void SetPosition(Rect newPos)
@@ -153,19 +135,16 @@ namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI.GraphView
             base.UpdatePresenterPosition();
             _customData.layout = GraphElementExtension.GetSnappedRect(GetPosition());
             SaveNewData();
-            if (group != null)
-            {
-                group.SaveNewData();
-            }
+            group?.SaveNewData();
         }
 
         private double lastClickTime;
-        private const double doubleClickSpeed = 0.5;
+        private const double DOUBLE_CLICK_SPEED = 0.5;
 
         private void OnLabelClick(MouseDownEvent evt)
         {
             var newTime = EditorApplication.timeSinceStartup;
-            if(newTime - lastClickTime < doubleClickSpeed)
+            if(newTime - lastClickTime < DOUBLE_CLICK_SPEED)
             {
                 SwitchToEditMode(true);
             }
@@ -192,7 +171,7 @@ namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI.GraphView
             MarkDirtyRepaint();
         }
 
-        public void SetText(string value)
+        private void SetText(string value)
         {
             Undo.RecordObject(_graph.graphProgramAsset, "Rename Comment");
             value = value.TrimEnd();
@@ -208,13 +187,27 @@ namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI.GraphView
                 EditorJsonUtility.ToJson(_customData));
         }
 
-        public class CustomData
+        // CustomData is serialized in user assets, so we can't rename/modify/remove any of these variables 
+        // ReSharper disable InconsistentNaming
+        // ReSharper disable NotAccessedField.Local
+        // ReSharper disable FieldCanBeMadeReadOnly.Local
+        // ReSharper disable UnusedMember.Global
+        // ReSharper disable UnassignedField.Global
+#pragma warning disable CS0649
+        private class CustomData
         {
             public string uid;
             public Rect layout;
             public string title = "Comment";
             public int layer;
             public Color elementTypeColor;
+            
         }
+#pragma warning restore CS0649
+        // ReSharper enable UnassignedField.Global
+        // ReSharper enable UnusedMember.Global
+        // ReSharper enable InconsistentNaming
+        // ReSharper enable NotAccessedField.Local
+        // ReSharper enable FieldCanBeMadeReadOnly.Local
     }
 }

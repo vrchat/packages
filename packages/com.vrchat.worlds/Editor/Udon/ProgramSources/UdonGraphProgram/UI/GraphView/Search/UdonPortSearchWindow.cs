@@ -62,7 +62,7 @@ namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI.GraphView
                 }
             }
 
-            var variables = _graphView.GetVariableNodes;
+            var variables = _graphView.VariableNodes;
 
             // Add Getters and Setters for matched variable types
             Texture2D icon = EditorGUIUtility.FindTexture("GameManager Icon");

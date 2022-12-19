@@ -1,8 +1,4 @@
-﻿#if UNITY_2019_3_OR_NEWER
-using UnityEditor.Experimental.GraphView;
-#else
-using UnityEditor.Experimental.UIElements.GraphView;
-#endif
+﻿using UnityEditor.Experimental.GraphView;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -11,26 +7,23 @@ using VRC.Udon.Graph.Interfaces;
 
 namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI.GraphView
 {
-
     public class UdonFullSearchWindow : UdonSearchWindowBase
     {
+        private static List<SearchTreeEntry> _slowRegistryCache;
 
-        static private List<SearchTreeEntry> _slowRegistryCache;
         #region ISearchWindowProvider
 
-        override public List<SearchTreeEntry> CreateSearchTree(SearchWindowContext context)
+        public override List<SearchTreeEntry> CreateSearchTree(SearchWindowContext context)
         {
-            if (!skipCache && (_slowRegistryCache != null && _slowRegistryCache.Count > 0)) return _slowRegistryCache;
+            if (!skipCache && _slowRegistryCache != null && _slowRegistryCache.Count > 0) return _slowRegistryCache;
 
             _slowRegistryCache = new List<SearchTreeEntry>
             {
-                new SearchTreeGroupEntry(new GUIContent("Full Search"), 0)
+                new SearchTreeGroupEntry(new GUIContent("Full Search"))
             };
 
             var topRegistries = UdonEditorManager.Instance.GetTopRegistries();
 
-            Texture2D icon = null;
-            var groupEntries = new Dictionary<string, SearchTreeGroupEntry>();
             foreach (var topRegistry in topRegistries)
             {
                 string topName = topRegistry.Key.Replace("NodeRegistry", "");
@@ -69,7 +62,7 @@ namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI.GraphView
                     if (!registryName.EndsWith("[]"))
                     {
                         // add Registry Level
-                        var groupEntry = new SearchTreeGroupEntry(new GUIContent(registryName, icon), level) { userData = registry };
+                        var groupEntry = new SearchTreeGroupEntry(new GUIContent(registryName, (Texture2D)null), level) { userData = registry };
                         _slowRegistryCache.Add(groupEntry);
                     }
 
@@ -79,13 +72,13 @@ namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI.GraphView
                     {
                         // we have a matching subRegistry, add that next
                         var arrayLevel = level + 1;
-                        var arrayGroupEntry = new SearchTreeGroupEntry(new GUIContent(regArrayType, icon), arrayLevel) { userData = registry };
+                        var arrayGroupEntry = new SearchTreeGroupEntry(new GUIContent(regArrayType, (Texture2D)null), arrayLevel) { userData = registry };
                         _slowRegistryCache.Add(arrayGroupEntry);
 
                         // Add all array entries
                         AddEntriesForRegistry(_slowRegistryCache, arrayRegistry, arrayLevel + 1);
                     }
-
+                    
                     AddEntriesForRegistry(_slowRegistryCache, registry, level + 1, true);
 
                 }

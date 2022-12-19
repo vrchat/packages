@@ -586,6 +586,7 @@ namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI
         public static string SanitizeVariableName(this string result)
         {
             result = result.Replace(" ", "");
+            result = result.Replace("[]", "Array");
             if (char.IsNumber(result[0]))
             {
                 result = $"A{result}";

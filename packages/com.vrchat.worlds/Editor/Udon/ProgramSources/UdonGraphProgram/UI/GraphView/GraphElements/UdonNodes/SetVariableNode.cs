@@ -1,5 +1,4 @@
-﻿using UnityEngine;
-using UnityEngine.UIElements;
+﻿using UnityEngine.UIElements;
 using VRC.Udon.Graph;
 
 namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI.GraphView.UdonNodes
@@ -10,7 +9,7 @@ namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI.GraphView.UdonNodes
         {
         }
 
-        public override void Initialize()
+        protected override void Initialize()
         {
             base.Initialize();
             

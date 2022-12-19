@@ -5,6 +5,7 @@ using System.Security.Cryptography;
 using System.Text;
 using UnityEngine;
 using UnityEngine.Networking;
+using VRC.Core;
 
 public static class VRCCachedWebRequest
 {
@@ -69,6 +70,9 @@ public static class VRCCachedWebRequest
             // No cached file, load it from url
             using(UnityWebRequest uwr = UnityWebRequestTexture.GetTexture(url))
             {
+                API.CertVerifyUnityWebRequest(uwr);
+                API.AuthenticateUnityWebRequest(uwr);
+                API.PopulateUnityWebRequestHeaders(uwr);
                 // Wait until request and download are complete
                 yield return uwr.SendWebRequest();
                 while(!uwr.isDone || !uwr.downloadHandler.isDone)

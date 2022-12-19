@@ -5,9 +5,11 @@ using UnityEngine.UIElements;
 using UnityEditor.Experimental.UIElements;
 using UnityEngine.Experimental.UIElements;
 #endif
+using System;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI.GraphView
 {
@@ -59,45 +61,6 @@ namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI.GraphView
 
             var column2 = new VisualElement() {name = "column-2"};
             mainContainer.Add(column2);
-
-            // Add Button for Last Graph
-            if (!string.IsNullOrEmpty(Settings.LastGraphGuid))
-            {
-                _openLastGraphButton = new Button(() =>
-                {
-                    var assetPath = AssetDatabase.GUIDToAssetPath(Settings.LastGraphGuid);
-                    var graphName = assetPath.Substring(assetPath.LastIndexOf("/") + 1).Replace(".asset", "");
-
-                    // Find actual asset from guid
-                    var asset = AssetDatabase.LoadAssetAtPath<UdonGraphProgramAsset>(assetPath);
-                    if (asset != null)
-                    {
-                        var w = EditorWindow.GetWindow<UdonGraphWindow>("Udon Graph", true, typeof(SceneView));
-                        // get reference to saved UdonBehaviour if possible
-                        UdonBehaviour udonBehaviour = null;
-                        string gPath = Settings.LastUdonBehaviourPath;
-                        string sPath = Settings.LastUdonBehaviourScenePath;
-                        if (!string.IsNullOrEmpty(gPath) && !string.IsNullOrEmpty(sPath))
-                        {
-                            var targetScene = EditorSceneManager.GetSceneByPath(sPath);
-                            if (targetScene != null && targetScene.isLoaded && targetScene.IsValid())
-                            {
-                                var targetObject = GameObject.Find(gPath);
-                                if (targetObject != null)
-                                {
-                                    udonBehaviour = targetObject.GetComponent<UdonBehaviour>();
-                                }
-                            }
-                        }
-
-                        // Initialize graph with restored udonBehaviour or null if not found / not saved
-                        w.InitializeGraph(asset, udonBehaviour);
-                    }
-                });
-
-                UpdateLastGraphButtonLabel();
-                column2.Add(_openLastGraphButton);
-            }
 
             var settingsTemplate =
                 Resources.Load<VisualTreeAsset>("UdonSettings") as VisualTreeAsset;
@@ -193,12 +156,13 @@ namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI.GraphView
             if (_openLastGraphButton == null) return;
 
             string currentButtonAssetGuid = (string) _openLastGraphButton.userData;
-            if (string.Compare(currentButtonAssetGuid, Settings.LastGraphGuid) != 0)
+            Settings.GraphSettings graphSettings = Settings.GetLastGraph();
+            if (String.CompareOrdinal(currentButtonAssetGuid, graphSettings.uid) != 0)
             {
-                var assetPath = AssetDatabase.GUIDToAssetPath(Settings.LastGraphGuid);
-                var graphName = assetPath.Substring(assetPath.LastIndexOf("/") + 1).Replace(".asset", "");
+                var assetPath = AssetDatabase.GUIDToAssetPath(graphSettings.uid);
+                var graphName = assetPath.Substring(assetPath.LastIndexOf("/", StringComparison.Ordinal) + 1).Replace(".asset", "");
 
-                _openLastGraphButton.userData = Settings.LastGraphGuid;
+                _openLastGraphButton.userData = graphSettings.uid;
                 _openLastGraphButton.text = $"Open {graphName}";
             }
         }

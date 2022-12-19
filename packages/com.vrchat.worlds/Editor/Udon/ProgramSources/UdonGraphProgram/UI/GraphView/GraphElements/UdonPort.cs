@@ -1,14 +1,7 @@
-#if UNITY_2019_3_OR_NEWER
 using UnityEditor.Experimental.GraphView;
 using UnityEngine.UIElements;
 using EditorUI = UnityEditor.UIElements;
 using EngineUI = UnityEngine.UIElements;
-#else
-using UnityEditor.Experimental.UIElements.GraphView;
-using UnityEngine.Experimental.UIElements;
-using EditorUI = UnityEditor.Experimental.UIElements;
-using EngineUI = UnityEngine.Experimental.UIElements;
-#endif
 using System;
 using System.Linq;
 using UnityEditor;
@@ -21,7 +14,6 @@ namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI.GraphView
     [Serializable]
     public class UdonPort : Port
     {
-        public string FullName;
         private UdonNodeData _udonNodeData;
         private int _nodeValueIndex;
 
@@ -48,11 +40,10 @@ namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI.GraphView
             UdonPort port = new UdonPort(orientation, portDirection, capacity, type)
             {
                 m_EdgeConnector = new EdgeConnector<Edge>(connectorListener),
+                portName = portName,
+                _udonNodeData = data,
+                _nodeValueIndex = index
             };
-
-            port.portName = portName;
-            port._udonNodeData = data;
-            port._nodeValueIndex = index;
 
             port.SetupPort();
             return port;
@@ -63,7 +54,7 @@ namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI.GraphView
             return _nodeValueIndex;
         }
 
-        private bool _isSendChangePort = false;
+        private bool _isSendChangePort;
         
         private void SetupPort()
         {
@@ -79,8 +70,6 @@ namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI.GraphView
 
             tooltip = UdonGraphExtensions.FriendlyTypeName(portType);
 
-            FullName = _udonNodeData.fullName;
-
             if (portType == null || direction == Direction.Output)
             {
                 return;
@@ -91,7 +80,7 @@ namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI.GraphView
                 var field = UdonFieldFactory.CreateField(
                     portType,
                     result,
-                    newValue => SetNewValue(newValue)
+                    SetNewValue
                 );
 
                 if (field != null)
@@ -130,11 +119,7 @@ namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI.GraphView
             field.isDelayed = true;
 
             // Special handling for escaping char value
-#if UNITY_2019_3_OR_NEWER
             field.RegisterValueChangedCallback(
-#else
-            field.OnValueChanged(
-#endif
                 e =>
                 {
                     if (e.newValue[0] == '\\' && e.newValue.Length > 1)
@@ -159,18 +144,14 @@ namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI.GraphView
         private void SetupField(VisualElement field)
         {
             // Custom Event fields need their event names sanitized after input and their connectors removed
-            if (_udonNodeData.fullName.CompareTo("Event_Custom") == 0)
+            if (string.Compare(_udonNodeData.fullName, "Event_Custom", StringComparison.Ordinal) == 0)
             {
-                var tfield = (TextField) field;
-#if UNITY_2019_3_OR_NEWER
-                tfield.RegisterValueChangedCallback(
-#else
-                tfield.OnValueChanged(
-#endif
+                var tField = (TextField) field;
+                tField.RegisterValueChangedCallback(
                     (e) =>
                     {
                         string newValue = e.newValue.SanitizeVariableName();
-                        tfield.value = newValue;
+                        tField.value = newValue;
                         SetNewValue(newValue);
                     });
                 RemoveConnectorAndLabel();
@@ -198,7 +179,9 @@ namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI.GraphView
         }
 
 #pragma warning disable 0649 // variable never assigned
+        // ReSharper disable once UnassignedField.Local
         private Button _editArrayButton;
+#pragma warning restore 0649
 
         private void EditArray(Type elementType)
         {
@@ -254,7 +237,7 @@ namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI.GraphView
             if (portType == null)
             {
                 // We are a flow port
-                SetFlowUID(((UdonNode) input.node).uid);
+                SetFlowUid(((UdonNode) input.node).uid);
                 this.Compile();
             }
             else
@@ -277,7 +260,7 @@ namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI.GraphView
 
             if (edgeConnector?.edgeDragHelper?.draggedPort == this)
             {
-                if (capacity == Capacity.Single && connections.Count() > 0)
+                if (capacity == Capacity.Single && connections.Any())
                 {
                     // This port could only have one connection. Fixed in Reserialize, need to reload to show the change
                     this.Reload();
@@ -289,7 +272,7 @@ namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI.GraphView
             }
         }
 
-        private void SetFlowUID(string newValue)
+        private void SetFlowUid(string newValue)
         {
             if (_udonNodeData.flowUIDs.Length <= _nodeValueIndex)
             {
@@ -313,14 +296,7 @@ namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI.GraphView
 
         public bool IsReloading()
         {
-            if (node is UdonNode)
-            {
-                return ((UdonNode) node).Graph.IsReloading;
-            }
-            else
-            {
-                return false;
-            }
+            return node is UdonNode && ((UdonNode) node).Graph.IsReloading;
         }
 
         public void SetDataFromNewConnection(string uidAndPort, int index)
@@ -361,7 +337,7 @@ namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI.GraphView
             if (direction == Direction.Output && portType == null)
             {
                 // We are a flow port
-                SetFlowUID("");
+                SetFlowUid("");
                 this.Compile();
             }
             else if (direction == Direction.Input && portType != null)

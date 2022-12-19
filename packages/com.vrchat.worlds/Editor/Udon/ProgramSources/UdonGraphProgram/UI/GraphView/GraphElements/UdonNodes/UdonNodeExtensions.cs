@@ -1,19 +1,11 @@
-﻿#if UNITY_2019_3_OR_NEWER
+﻿using System;
 using UnityEditor.Experimental.GraphView;
 using EditorGV = UnityEditor.Experimental.GraphView;
 using EngineUI = UnityEngine.UIElements;
 using EditorUI = UnityEditor.UIElements;
 using UnityEngine.UIElements;
-#else
-using UnityEditor.Experimental.UIElements.GraphView;
-using EditorGV = UnityEditor.Experimental.UIElements.GraphView;
-using EngineUI = UnityEngine.Experimental.UIElements;
-using EditorUI = UnityEditor.Experimental.UIElements;
-using UnityEngine.Experimental.UIElements;
-#endif
 using System.Collections.Generic;
 using System.Linq;
-using UnityEngine;
 using VRC.Udon.Common;
 using VRC.Udon.Compiler.Compilers;
 
@@ -23,7 +15,8 @@ namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI.GraphView.UdonNodes
     {
         
         #region Methods for creating popup selectors from Program variables / event
-        public static readonly HashSet<string> InternalEventNames = new HashSet<string>()
+
+        private static readonly HashSet<string> InternalEventNames = new HashSet<string>()
         {
             "_start", "_update", "_lateUpdate", "_fixedUpdate", "onAnimatorIk", "_onAnimatorMove", "_onBecameInvisible", "_onBecameVisible",
             "_onPlayerCollisionEnter", "_onCollisionEnter", "_onCollisionEnter2D", "_onPlayerCollisionExit", "_onCollisionExit", "_onCollisionExit2D", "_onPlayerCollisionStay", "_onCollisionStay", "_onCollisionStay2D",
@@ -46,12 +39,12 @@ namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI.GraphView.UdonNodes
                 !InternalEventNames.Contains(e) && !e.StartsWithCached(VariableChangedEvent.EVENT_PREFIX)).ToList();
         }
 
-        public static EditorUI.PopupField<string> GetProgramPopup(this UdonNode node, ProgramPopupType popupType, EditorUI.PopupField<string> _eventNamePopup)
+        public static EditorUI.PopupField<string> GetProgramPopup(this UdonNode node, ProgramPopupType popupType, EditorUI.PopupField<string> eventNamePopup)
         {
-            string PLACEHOLDER = "----";
-            string MISSING = "MISSING! Was";
+            const string placeholder = "----";
+            const string missing = "MISSING! Was";
             
-            List<string> _options = new List<string>(){PLACEHOLDER};
+            List<string> options = new List<string>{placeholder};
             var data = node.data;
 
             bool unavailable = true;
@@ -60,15 +53,17 @@ namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI.GraphView.UdonNodes
                 switch (popupType)
                 {
                     case ProgramPopupType.Events:
-                        _options =  GetCustomEventsFromAsset(node.Graph.graphProgramAsset.SerializedProgramAsset);
+                        options =  GetCustomEventsFromAsset(node.Graph.graphProgramAsset.SerializedProgramAsset);
                         break;
                     case ProgramPopupType.Variables:
                         node.Graph.RefreshVariables(false);
-                        _options = new List<string>(node.Graph.GetVariableNames).Where(x=>!x.StartsWithCached(VariableChangedEvent.OLD_VALUE_PREFIX)).ToList();
+                        options = new List<string>(node.Graph.VariableNames).Where(x=>!x.StartsWithCached(VariableChangedEvent.OLD_VALUE_PREFIX)).ToList();
                         break;
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(popupType), popupType, null);
                 }
-                unavailable = _options.Count == 0;
-                _options.Insert(0, PLACEHOLDER);
+                unavailable = options.Count == 0;
+                options.Insert(0, placeholder);
             }
             else if(data.InputNodeAtIndex(0)?.fullName == "Get_Variable")
             {
@@ -94,14 +89,21 @@ namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI.GraphView.UdonNodes
                         switch (popupType)
                         {
                             case ProgramPopupType.Events:
-                                _options = GetCustomEventsFromAsset(ub.programSource.SerializedProgramAsset);
+                                options = GetCustomEventsFromAsset(ub.programSource.SerializedProgramAsset);
                                 break;
                             case ProgramPopupType.Variables:
-                                _options = ub.programSource?.SerializedProgramAsset?.RetrieveProgram()?.SymbolTable
-                                    .GetSymbols().Where(s => !s.StartsWithCached(UdonGraphCompiler.INTERNAL_VARIABLE_PREFIX) && !s.StartsWithCached(VariableChangedEvent.OLD_VALUE_PREFIX)).ToList();
+                            {
+                                if(ub.programSource == null){break;}
+                                if(ub.programSource.SerializedProgramAsset == null){break;}
+                                options = ub.programSource.SerializedProgramAsset.RetrieveProgram()?.SymbolTable
+                                    .GetSymbols().Where(s =>
+                                        !s.StartsWithCached(UdonGraphCompiler.INTERNAL_VARIABLE_PREFIX) &&
+                                        !s.StartsWithCached(VariableChangedEvent.OLD_VALUE_PREFIX)).ToList();
                                 break;
+                            }
                         }
-                        _options.Insert(0, PLACEHOLDER);
+
+                        options?.Insert(0, placeholder);
                         unavailable = false;
                     }
                 }
@@ -111,53 +113,51 @@ namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI.GraphView.UdonNodes
             int currentIndex = 0;
             int targetNodeValueIndex = node.data.fullName.Contains("SendCustomNetworkEvent") ? 2 : 1;
             string targetVarName = data.nodeValues[targetNodeValueIndex].Deserialize() as string;
-            if (targetVarName != null && targetVarName.StartsWithCached(MISSING)) targetVarName = null;
+            if (targetVarName != null && targetVarName.StartsWithCached(missing)) targetVarName = null;
             
             // If we have a target variable name:
-            if (!string.IsNullOrWhiteSpace(targetVarName))
+            if (!string.IsNullOrWhiteSpace(targetVarName) && options != null)
             {
-                if (_options.Contains(targetVarName))
+                if (options.Contains(targetVarName))
                 {
-                    currentIndex = _options.IndexOf(targetVarName);
+                    currentIndex = options.IndexOf(targetVarName);
                 }
                 else
                 {
-                    _options[0] = unavailable ? targetVarName : $"{MISSING} {targetVarName}";
+                    options[0] = unavailable ? targetVarName : $"{missing} {targetVarName}";
                 }
             }
 
-            if (_eventNamePopup == null)
+            if (eventNamePopup == null)
             {
-                _eventNamePopup = new EditorUI.PopupField<string>(_options, currentIndex);
-                _eventNamePopup.name = popupType == ProgramPopupType.Events ? "EventNamePopup" : "VariablePopup";
+                eventNamePopup = new EditorUI.PopupField<string>(options, currentIndex)
+                {
+                    name = popupType == ProgramPopupType.Events ? "EventNamePopup" : "VariablePopup"
+                };
                 var eventNamePort = node.inputContainer.Q(null,  popupType == ProgramPopupType.Events ? "eventName" : "symbolName");
-                eventNamePort?.Add(_eventNamePopup);
+                eventNamePort?.Add(eventNamePopup);
                 if (unavailable)
                 {
-                    _eventNamePopup.SetEnabled(false);
+                    eventNamePopup.SetEnabled(false);
                 }
             }
             else
             {
                 // Remaking it - remove the old one, at the new one at its previous location
-                int index = node.inputContainer.IndexOf(_eventNamePopup);
-                _eventNamePopup.RemoveFromHierarchy();
-                _eventNamePopup = new EditorUI.PopupField<string>(_options, currentIndex);
-                node.inputContainer.Insert(index, _eventNamePopup);
+                int index = node.inputContainer.IndexOf(eventNamePopup);
+                eventNamePopup.RemoveFromHierarchy();
+                eventNamePopup = new EditorUI.PopupField<string>(options, currentIndex);
+                node.inputContainer.Insert(index, eventNamePopup);
             }
-#if UNITY_2019_3_OR_NEWER
-            _eventNamePopup.RegisterValueChangedCallback(
-#else
-            _eventNamePopup.OnValueChanged(
-#endif
-                (e) =>
+            eventNamePopup.RegisterValueChangedCallback(
+                e =>
                 {
-                    node.SetNewValue(e.newValue.CompareTo(PLACEHOLDER) == 0 ? "" : e.newValue.ToString(), targetNodeValueIndex);
+                    node.SetNewValue(string.Compare(e.newValue, placeholder, StringComparison.Ordinal) == 0 ? "" : e.newValue.ToString(), targetNodeValueIndex);
                     // Todo: update text field directly and save instead of calling Reload
                     node.Reload();
                 });
 
-            return _eventNamePopup;
+            return eventNamePopup;
         }
         #endregion
     }

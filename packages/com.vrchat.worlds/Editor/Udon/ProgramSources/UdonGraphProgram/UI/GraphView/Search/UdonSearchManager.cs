@@ -1,8 +1,4 @@
-﻿#if UNITY_2019_3_OR_NEWER
-using UnityEditor.Experimental.GraphView;
-#else
-using UnityEditor.Experimental.UIElements.GraphView;
-#endif
+﻿using UnityEditor.Experimental.GraphView;
 using System;
 using System.Linq;
 using UnityEditor;
@@ -13,15 +9,16 @@ namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI.GraphView
 {
     public class UdonSearchManager
     {
-        private UdonGraph _view;
-        private UdonGraphWindow _window;
+        private readonly UdonGraph _view;
+        private readonly UdonGraphWindow _window;
 
         // Search Windows
         private UdonFocusedSearchWindow _focusedSearchWindow;
         private UdonRegistrySearchWindow _registrySearchWindow;
         private UdonFullSearchWindow _fullSearchWindow;
-        public UdonVariableTypeWindow _variableSearchWindow;
-        public UdonPortSearchWindow _portSearchWindow;
+        private UdonVariableTypeWindow _variableSearchWindow;
+        private UdonPortSearchWindow _portSearchWindow;
+        private UdonEventTypeWindow _eventSearchWindow;
 
         public UdonSearchManager(UdonGraph view, UdonGraphWindow window)
         {
@@ -54,6 +51,10 @@ namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI.GraphView
             if (_portSearchWindow == null)
                 _portSearchWindow = ScriptableObject.CreateInstance<UdonPortSearchWindow>();
             _portSearchWindow.Initialize(_window, _view);
+
+            if (_eventSearchWindow == null)
+                _eventSearchWindow = ScriptableObject.CreateInstance<UdonEventTypeWindow>();
+            _eventSearchWindow.Initialize(_window, _view);
         }
 
         private void OnRequestNodeCreation(NodeCreationContext context)
@@ -62,15 +63,18 @@ namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI.GraphView
             if (context.target == null)
             {
                 // If we have a node selected (but not set as context.target because that's a container for new nodes to go into), search within that node's registry
-                if (Settings.SearchOnSelectedNodeRegistry && _view.selection.Count > 0 && _view.selection.First() is UdonNode)
+                if (Settings.SearchOnSelectedNodeRegistry && _view.selection.Count > 0 &&
+                    _view.selection.First() is UdonNode)
                 {
-                    _focusedSearchWindow.targetRegistry = (_view.selection.First() as UdonNode).Registry;
-                    SearchWindow.Open(new SearchWindowContext(context.screenMousePosition, 360, 360), _focusedSearchWindow);
+                    _focusedSearchWindow.targetRegistry = (_view.selection.First() as UdonNode)?.Registry;
+                    SearchWindow.Open(new SearchWindowContext(context.screenMousePosition, 360, 360),
+                        _focusedSearchWindow);
                 }
                 else
                 {
                     // Create Search Window that only searches Top-Level Registries
-                    SearchWindow.Open(new SearchWindowContext(context.screenMousePosition, 360, 360), _registrySearchWindow);
+                    SearchWindow.Open(new SearchWindowContext(context.screenMousePosition, 360, 360),
+                        _registrySearchWindow);
                 }
             }
             else if (context.target is UdonGraph)
@@ -83,9 +87,16 @@ namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI.GraphView
         public void OpenVariableSearch(Vector2 screenMousePosition)
         {
             // offset search window to appear next to mouse
-            screenMousePosition.x += 140;
+            screenMousePosition.x += 217;
             screenMousePosition.y += 0;
             SearchWindow.Open(new SearchWindowContext(screenMousePosition, 360, 360), _variableSearchWindow);
+        }
+
+        public void OpenEventSearch(Vector2 screenMousePosition)
+        {
+            screenMousePosition.x += 217;
+            screenMousePosition.y += 0;
+            SearchWindow.Open(new SearchWindowContext(screenMousePosition, 360, 360), _eventSearchWindow);
         }
 
         public void OpenPortSearch(Type type, Vector2 screenMousePosition, UdonPort port, Direction direction)
@@ -101,6 +112,7 @@ namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI.GraphView
         }
 
         private Vector2 _searchWindowPosition;
+
         public void QueueOpenFocusedSearch(INodeRegistry registry, Vector2 position)
         {
             _searchWindowPosition = position;

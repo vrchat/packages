@@ -23,16 +23,14 @@ namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram
         public UdonGraphData graphData = new UdonGraphData();
 
         [SerializeField]
-        public UdonGraphElementData[] graphElementData = new UdonGraphElementData[0];
-
+        public UdonGraphElementData[] graphElementData = Array.Empty<UdonGraphElementData>();
+        
         [SerializeField]
-        public UdonGraph.ViewTransformData viewTransform = new UdonGraph.ViewTransformData();
-
-        [SerializeField]
+        // ReSharper disable once NotAccessedField.Global
         public string version = "1.0.0";
 
         [SerializeField]
-        private bool showAssembly = false;
+        private bool showAssembly;
 
         [NonSerialized, OdinSerialize]
         private Dictionary<string, (object value, Type type)> heapDefaultValues = new Dictionary<string, (object value, Type type)>();
@@ -42,7 +40,7 @@ namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram
             if (GUILayout.Button("Open Udon Graph", "LargeButton"))
             {
                 var w = EditorWindow.GetWindow<UdonGraphWindow>("Udon Graph", true, typeof(SceneView));
-                w.InitializeGraph(this, udonBehaviour);
+                w.LoadGraphFromAsset(this, udonBehaviour);
             }
 
             DrawInteractionArea(udonBehaviour);

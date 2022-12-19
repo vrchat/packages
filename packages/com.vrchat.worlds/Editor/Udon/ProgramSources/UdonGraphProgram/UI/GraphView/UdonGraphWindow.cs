@@ -1,16 +1,9 @@
-﻿#if UNITY_2019_3_OR_NEWER
-using UnityEngine.UIElements;
+﻿using UnityEngine.UIElements;
 using UnityEditor.UIElements;
-#else
-using UnityEngine.Experimental.UIElements;
-using UnityEditor.Experimental.UIElements;
-using UnityEngine.Experimental.UIElements.StyleEnums;
-#endif
 using System.Linq;
 using UnityEditor;
-using UnityEditor.SceneManagement;
 using UnityEngine;
-using VRC.Udon.Graph;
+using UnityEngine.SceneManagement;
 
 namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI.GraphView
 {
@@ -19,15 +12,12 @@ namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI.GraphView
         private VisualElement _rootView;
 
         // Reference to actual Graph View
-        [SerializeField] private UdonGraph _graphView;
-
-        private UdonGraphProgramAsset _graphAsset;
+        private UdonGraph _graphView;
         private UdonWelcomeView _welcomeView;
         private VisualElement _curtain;
 
         // Toolbar and Buttons
         private Toolbar _toolbar;
-        private Label _graphAssetName;
         private ToolbarMenu _toolbarOptions;
         private UdonGraphStatus _graphStatus;
         private ToolbarButton _graphReload;
@@ -61,18 +51,16 @@ namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI.GraphView
                     break;
                 case PlayModeStateChange.ExitingPlayMode:
                     break;
-                default:
-                    break;
             }
         }
-
+        
         private void OnEnable()
         {
             EditorApplication.playModeStateChanged += LogPlayModeState;
 
             InitializeRootView();
 
-            _curtain = new VisualElement()
+            _curtain = new VisualElement
             {
                 name = "curtain",
             };
@@ -81,102 +69,242 @@ namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI.GraphView
             _welcomeView = new UdonWelcomeView();
             _welcomeView.StretchToParentSize();
             _rootView.Add(_welcomeView);
-
             SetupToolbar();
 
             Undo.undoRedoPerformed -=
                 OnUndoRedo; //Remove old handler if present to prevent duplicates, doesn't cause errors if not present
             Undo.undoRedoPerformed += OnUndoRedo;
+            
+            // Clear bad/old serialized data (ie: from another unity project or a deleted asset)    
+            Settings.CleanSerializedData();
+            var graphSettingsList = Settings.GraphSettingsList.GetGraphSettings(); // Get list of open graphs from the Settings
 
-            if (_graphAsset != null)
+            foreach (Settings.GraphSettings t in graphSettingsList)
             {
-                UdonBehaviour udonBehaviour = null;
-                string gPath = Settings.LastUdonBehaviourPath;
-                string sPath = Settings.LastUdonBehaviourScenePath;
-                if (!string.IsNullOrEmpty(gPath) && !string.IsNullOrEmpty(sPath))
-                {
-                    var targetScene = EditorSceneManager.GetSceneByPath(sPath);
-                    if (targetScene != null && targetScene.isLoaded && targetScene.IsValid())
-                    {
-                        var targetObject = GameObject.Find(gPath);
-                        if (targetObject != null)
-                        {
-                            udonBehaviour = targetObject.GetComponent<UdonBehaviour>();
-                        }
-                    }
-                }
-
-                InitializeGraph(_graphAsset, udonBehaviour);
+                LoadGraphFromSettings(t);
+                var graphSettingsListNew = Settings.GraphSettingsList.GetGraphSettings(); // Get list of open graphs from the Settings
             }
         }
 
         private void InitializeRootView()
         {
-#if UNITY_2019_3_OR_NEWER
             _rootView = rootVisualElement;
             _rootView.styleSheets.Add((StyleSheet) Resources.Load("UdonGraphStyle"));
-#else
-            _rootView = this.GetRootVisualContainer();
-            _rootView.AddStyleSheetPath("UdonGraphStyle2018");
-#endif
+            _rootView.styleSheets.Add((StyleSheet) Resources.Load("UdonSidebarStyle"));
+            _rootView.styleSheets.Add((StyleSheet) Resources.Load("UdonToolbarStyle"));
         }
 
-        public void InitializeGraph(UdonGraphProgramAsset graph, UdonBehaviour udonBehaviour = null)
+
+        public void LoadGraphFromAsset(UdonGraphProgramAsset graph, UdonBehaviour udonBehaviour = null)
         {
-            this._graphAsset = graph;
-
-            InitializeWindow();
-
-            _graphView = _rootView.Children().FirstOrDefault(e => e is UdonGraph) as UdonGraph;
-            if (_graphView == null)
-            {
-                Debug.LogError("GraphView has not been added to the BaseGraph root view!");
-                return;
-            }
-
-            _graphView.Initialize(graph, udonBehaviour);
-
-            _graphStatus.LoadAsset(graph);
-            // Store GUID for this asset to settings for easy reload later
-            if (AssetDatabase.TryGetGUIDAndLocalFileIdentifier(graph, out string guid, out long localId))
-            {
-                Settings.LastGraphGuid = guid;
-            }
-
-            if (udonBehaviour != null)
-            {
-                Settings.LastUdonBehaviourPath = udonBehaviour.transform.GetHierarchyPath();
-                Settings.LastUdonBehaviourScenePath = udonBehaviour.gameObject.scene.path;
-            }
-
-            _graphAssetName.text = graph.name;
-            ShowGraphTools(true);
+            // Store opened graph in the settings
+            Settings.SetLastGraph(graph, udonBehaviour);
+            var graphSettings = Settings.GetLastGraph();
+            LoadGraphFromSettings(graphSettings);
         }
 
-        private void InitializeWindow()
+
+        private void LoadGraphFromSettings(Settings.GraphSettings graphSettings)
         {
-            if (_graphView == null)
+            void CloseGraphTab(string graphAssetName)
             {
-                _graphView = new UdonGraph(this);
-                // we could add the toolbar in here
+                Settings.CloseGraph(graphAssetName); // Remove the graph asset from the list of opened graphs
+
+                // Iterate through the elements in the toolbar with the "graphTab" style className
+                _toolbar.Query(null, "graphTab").ForEach(i =>
+                {
+                    if (i is Button btn &&
+                        btn.text == graphAssetName) // Find the button with the same name as the graph asset
+                    {
+                        btn.RemoveFromHierarchy(); // Remove the graph tab button from the toolbar
+                    }
+                });
+                // Load the last graph that was opened, after closing this tab
+                var lastGraphAfterClosed = Settings.GetLastGraph();
+                if (lastGraphAfterClosed == null)
+                {
+                    // If there are no more graphs open, show the welcome view
+                    _rootView.Remove(_graphView);
+                    _rootView.Add(_welcomeView);
+                }
+
+                LoadLastGraphIntoGraphWindow();
             }
 
-            RemoveIfContaining(_welcomeView);
-            RemoveIfContaining(_graphView);
-            _rootView.Insert(0, _graphView);
+            void UpdateSelectedTab()
+            {
+                var lastGraph = Settings.GetLastGraph();
+                // Iterate through the elements in the toolbar with the "graphTab" style className
+                _toolbar.Query(null, "graphTab").ForEach(i =>
+                {
+                    if (i == null) return;
+                    bool isSelected = (lastGraph == null || ((Button)i).text == lastGraph.programAsset.name);
+                    i.EnableInClassList("selected", isSelected); // Deselect all the graph tabs
+                });
+                if (lastGraph != null)
+                {
+                    var graphToolbar = _rootView.Q<UdonGraphToolbar>();
+                    graphToolbar.RefreshAsset(lastGraph.programAsset);
+                }
+            }
+
+            void LoadLastGraphIntoGraphWindow(UdonBehaviour udonBehaviour = null)
+            {
+                Settings.GraphSettings lastGraphSettings = Settings.GetLastGraph();
+                if (lastGraphSettings == null) return;
+                var lastGraph = lastGraphSettings.programAsset;
+                if (lastGraph == null) return;
+
+                if (udonBehaviour != null)
+                {
+                    if (udonBehaviour.programSource != lastGraph)
+                    {
+                        // If the udon behaviour is not using the last graph, don't load it
+                        udonBehaviour = null;
+                    }
+                }
+                
+                if (_graphView == null)
+                {
+                    //Make a new graph view only if one doesn't exist
+                    _graphView = new UdonGraph(this);
+                }
+            
+                // Remove the views if they already exist
+                RemoveIfContaining(_welcomeView);
+                RemoveIfContaining(_graphView);
+
+                Button graphTabButton = FindGraphIfOpen(lastGraph);
+                
+                // Add the graph view to the root view
+                _rootView.Insert(0, _graphView);
+
+                if (graphTabButton == null)
+                {
+                    OpenNewTab(lastGraph);
+                }
+                
+                // Load the graph into the graph view
+                _graphView = _rootView.Children().FirstOrDefault(e => e is UdonGraph) as UdonGraph;
+                if (_graphView == null)
+                {
+                    Debug.LogError("GraphView has not been added to the BaseGraph root view!");
+                    return;
+                }
+                _graphView.Initialize(lastGraph, udonBehaviour);
+
+                UpdateSelectedTab();
+                
+                if (lastGraph != null)
+                {
+                    var graphToolbar = _rootView.Q<UdonGraphToolbar>();
+                    graphToolbar.RefreshAsset(lastGraph);
+                }
+            }
+            
+            Button FindGraphIfOpen(UdonGraphProgramAsset asset)
+            {
+                VisualElement match = null;
+                foreach (var child in _toolbar.Children())
+                {   
+                    if (child is Button graphButton && graphButton.text == asset.name)
+                    {
+                        match = graphButton;
+                        break;
+                    }
+                }
+
+                return (Button)match;
+            }
+
+            void OpenNewTab(UdonGraphProgramAsset graph)
+            {
+                // Create a new graph tab button
+                var graphAssetName = graph.name; // Get the name of the graph asset
+                var graphButton = new Button(() =>
+                {
+                    var selected = Settings.GetGraph(graphAssetName); // Find the selected graph
+                    if (selected == null)
+                    {
+                        // If the graph is not found, remove the tab
+                        CloseGraphTab(graphAssetName);
+                    }
+                    else
+                    {
+                        Settings.SetLastGraph(selected);
+                        LoadLastGraphIntoGraphWindow(); // Initialize the graph with the selected graph
+                        UpdateSelectedTab();
+                    }
+                })
+                {
+                    text = graphAssetName // Set the text of the graph tab button to the name of the graph asset
+                };
+                var closeTabBtn = new Button(() => { CloseGraphTab(graphAssetName); })
+                {
+                    text = "x" // Set the text of the close tab button to "x"
+                };
+
+                closeTabBtn.AddToClassList("graphTabClose");
+                graphButton.Add(closeTabBtn);
+                graphButton.AddToClassList("graphTab");
+                //graphButton.AddToClassList("selected");
+
+                // Add the graph tab button to the toolbar
+                _toolbar.Add(graphButton);
+            }
+            
+            if (graphSettings == null) return;
+            if (graphSettings.programAsset == null) return;
+            
+            string assetPath = graphSettings.assetPath;
+            string scenePath = graphSettings.scenePath;
+            
+            if (!string.IsNullOrEmpty(scenePath)) // If the graph was opened from a scene
+            {
+                var targetScene = SceneManager.GetSceneByPath(scenePath);
+                if (!targetScene.isLoaded || !targetScene.IsValid()) return;
+
+                GameObject targetObject = null;
+                var gameObjects = Resources.FindObjectsOfTypeAll<GameObject>();
+                foreach (var gameObject in gameObjects)
+                {
+                    if (gameObject.scene == targetScene && gameObject.transform.GetHierarchyPath() == assetPath)
+                    {
+                        targetObject = gameObject;
+                        break;
+                    }
+                }
+                 
+                if (targetObject == null) return;
+
+                UdonBehaviour udonBehaviour = targetObject.GetComponent<UdonBehaviour>();
+                LoadLastGraphIntoGraphWindow(udonBehaviour);
+            }
+            else if (!string.IsNullOrEmpty(assetPath)) // If the graph was opened directly from an asset
+            {
+                var asset = AssetDatabase.LoadAssetAtPath<UdonGraphProgramAsset>(assetPath);
+                if (asset == null) return;
+                LoadLastGraphIntoGraphWindow();
+            }
+            Button graphTab = FindGraphIfOpen(graphSettings.programAsset);
+            
+            if (graphTab == null)
+            {
+                OpenNewTab(graphSettings.programAsset);
+            }
+            
         }
 
         private void ReloadWelcome()
         {
             RemoveIfContaining(_welcomeView);
             _rootView.Add(_welcomeView);
-            ShowGraphTools(false);
         }
 
         // TODO: maybe move this to GraphView since it's so connected?
         private void SetupToolbar()
         {
-            _toolbar = new Toolbar()
+            _toolbar = new Toolbar
             {
                 name = "UdonToolbar",
             };
@@ -185,121 +313,35 @@ namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI.GraphView
             _toolbar.Add(new ToolbarButton(() => { ReloadWelcome(); })
                 {text = "Welcome"});
 
-            _graphAssetName = new Label()
-            {
-                name = "assetName",
-            };
-            _toolbar.Add(_graphAssetName);
-
-#if UNITY_2019_3_OR_NEWER
-            _toolbar.Add(new ToolbarSpacer()
-            {
-                flex = true,
-            });
-#else
-            _toolbar.Add(new ToolbarFlexSpacer());
-#endif
-            _updateOrderField = new VisualElement()
-            {
-                visible = false,
-            };
-            _updateOrderField.Add(new Label("UpdateOrder"));
-            _updateOrderIntField = new IntegerField()
-            {
-                name = "UpdateOrderIntegerField",
-                value = (_graphAsset == null) ? 0 : _graphAsset.graphData.updateOrder,
-            };
-#if UNITY_2019_3_OR_NEWER
-            _updateOrderIntField.RegisterValueChangedCallback((e) =>
-#else
-            _updateOrderIntField.OnValueChanged(e =>
-#endif
-            {
-                _graphView.graphProgramAsset.graphData.updateOrder = e.newValue;
-                _updateOrderField.visible = false;
-            });
-            _updateOrderIntField.isDelayed = true;
-            _updateOrderField.Add(_updateOrderIntField);
-            _toolbar.Add(_updateOrderField);
-
             _toolbarOptions = new ToolbarMenu
-            {
-                text = "Settings"
-            };
-            // Show Variables Window
-            _toolbarOptions.menu.AppendAction("Show Variables",
-                (m) => { _graphView.ToggleShowVariables(!_graphView.GetBlackboardVisible()); },
-                (s) => { return BoolToStatus(_graphView.GetBlackboardVisible()); });
-            // Show Minimap
-            _toolbarOptions.menu.AppendAction("Show MiniMap",
-                (m) => { _graphView.ToggleShowMiniMap(!_graphView.GetMinimapVisible()); },
-                (s) => { return BoolToStatus(_graphView.GetMinimapVisible()); });
-            _toolbarOptions.menu.AppendSeparator();
-            // Show Update Order
-            _toolbarOptions.menu.AppendAction("Show UpdateOrder", (m) =>
-            {
-#if UNITY_2019_3_OR_NEWER
-                _updateOrderField.visible = !(m.status == DropdownMenuAction.Status.Checked);
-#else
-                _updateOrderField.visible = !(m.status == DropdownMenu.MenuAction.StatusFlags.Checked);
-#endif
-                if (_updateOrderField.visible)
-                {
-                    _updateOrderIntField.value = _graphAsset.graphData.updateOrder;
-                }
-
-                _updateOrderIntField.Focus();
-                _updateOrderIntField.SelectAll();
-            }, (s) => { return BoolToStatus(_updateOrderField.visible); });
-            // Search On Noodle Drop
+             {
+                 text = "Settings"
+             };
+             // Show UpdateOrder setting
+             _updateOrderField = new VisualElement
+             {
+                 visible = false
+             };
+             _updateOrderIntField = new IntegerField
+             {
+                 name = "UpdateOrderIntegerField",
+                 value = (_graphView?.graphProgramAsset == null) ? 0 : _graphView.graphProgramAsset.graphData.updateOrder,
+             };
+             
+             // Search On Noodle Drop
             _toolbarOptions.menu.AppendAction("Search on Noodle Drop",
-                (m) => { Settings.SearchOnNoodleDrop = !Settings.SearchOnNoodleDrop; },
-                (s) => { return BoolToStatus(Settings.SearchOnNoodleDrop); });
+                m => { Settings.SearchOnNoodleDrop = !Settings.SearchOnNoodleDrop; },
+                s => BoolToStatus(Settings.SearchOnNoodleDrop));
             // Search On Selected Node
             _toolbarOptions.menu.AppendAction("Search on Selected Node",
-                (m) => { Settings.SearchOnSelectedNodeRegistry = !Settings.SearchOnSelectedNodeRegistry; },
-                (s) => { return BoolToStatus(Settings.SearchOnSelectedNodeRegistry); });
+                m => { Settings.SearchOnSelectedNodeRegistry = !Settings.SearchOnSelectedNodeRegistry; },
+                s => BoolToStatus(Settings.SearchOnSelectedNodeRegistry));
             _toolbar.Add(_toolbarOptions);
-
-            _graphCompile = new ToolbarButton(() =>
-                {
-                    if (_graphAsset != null && _graphAsset is AbstractUdonProgramSource udonProgramSource)
-                    {
-                        UdonEditorManager.Instance.QueueAndRefreshProgram(udonProgramSource);
-                    }
-                })
-                {text = "Compile"};
-            _toolbar.Add(_graphCompile);
-
-            _graphReload = new ToolbarButton(() => { _graphView.Reload(); })
-                {text = "Reload"};
-            _toolbar.Add(_graphReload);
-
-            _graphStatus = new UdonGraphStatus(_rootView);
-            _toolbar.Add(_graphStatus);
-
-            ShowGraphTools(false);
         }
 
-#if UNITY_2019_3_OR_NEWER
         private DropdownMenuAction.Status BoolToStatus(bool value)
         {
             return value ? DropdownMenuAction.Status.Checked : DropdownMenuAction.Status.Normal;
-        }
-#else
-        private DropdownMenu.MenuAction.StatusFlags BoolToStatus(bool value)
-        {
-            return value ? DropdownMenu.MenuAction.StatusFlags.Checked : DropdownMenu.MenuAction.StatusFlags.Normal;
-        }
-#endif
-
-        public void ShowGraphTools(bool value)
-        {
-            _graphAssetName.style.visibility = value ? Visibility.Visible : Visibility.Hidden;
-            _toolbarOptions.style.visibility = value ? Visibility.Visible : Visibility.Hidden;
-            _graphCompile.style.visibility = value ? Visibility.Visible : Visibility.Hidden;
-            _graphReload.style.visibility = value ? Visibility.Visible : Visibility.Hidden;
-            _graphStatus.style.visibility = value ? Visibility.Visible : Visibility.Hidden;
         }
 
         private void RemoveIfContaining(VisualElement element)
@@ -314,11 +356,6 @@ namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI.GraphView
         {
             Repaint();
         }
-
-        public UdonGraphData GetGraphDataFromAsset(UdonGraphProgramAsset asset)
-        {
-            InitializeGraph(asset);
-            return _graphView.graphData;
-        }
+        
     }
 }
