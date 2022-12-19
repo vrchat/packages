@@ -113,8 +113,8 @@ namespace VRC.SDK3.Avatars
             try
             {
                 //Find types
-                var TypeDynamicBone = ValidationUtils.GetTypeFromName("DynamicBone");
-                var TypeDynamicBoneCollider = ValidationUtils.GetTypeFromName("DynamicBoneCollider");
+                var TypeDynamicBone = TypeUtils.GetTypeFromName("DynamicBone");
+                var TypeDynamicBoneCollider = TypeUtils.GetTypeFromName("DynamicBoneCollider");
                 if (TypeDynamicBone == null || TypeDynamicBoneCollider == null)
                 {
                     EditorUtility.DisplayDialog("Error", "DynamicBone not found in the project.", "Okay");

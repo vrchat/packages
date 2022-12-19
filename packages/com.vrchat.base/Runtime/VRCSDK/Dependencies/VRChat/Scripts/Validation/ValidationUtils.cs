@@ -56,7 +56,6 @@ namespace VRC.SDKBase.Validation
             return foundComponents;
         }
 
-        private static readonly Dictionary<string, Type> _typeCache = new Dictionary<string, Type>();
         private static readonly Dictionary<string, HashSet<Type>> _whitelistCache = new Dictionary<string, HashSet<Type>>();
         public static HashSet<Type> WhitelistedTypes(string whitelistName, IEnumerable<string> componentTypeWhitelist)
         {
@@ -69,7 +68,7 @@ namespace VRC.SDKBase.Validation
             HashSet<Type> whitelist = new HashSet<Type>();
             foreach(string whitelistedTypeName in componentTypeWhitelist)
             {
-                Type whitelistedType = GetTypeFromName(whitelistedTypeName, assemblies);
+                Type whitelistedType = TypeUtils.GetTypeFromName(whitelistedTypeName, assemblies);
                 if(whitelistedType == null)
                 {
                     continue;
@@ -139,41 +138,6 @@ namespace VRC.SDKBase.Validation
             }
         }
 
-        public static Type GetTypeFromName(string name, Assembly[] assemblies = null)
-        {
-            if (_typeCache.ContainsKey(name))
-            {
-                
-                return _typeCache[name];
-            }
-
-            if (assemblies == null)
-            {
-                assemblies = AppDomain.CurrentDomain.GetAssemblies();
-            }
-
-            foreach (Assembly assembly in assemblies)
-            {
-                Type found = assembly.GetType(name);
-                if(found == null)
-                {
-                    continue;
-                }
-
-                _typeCache[name] = found;
-                return found;
-            }
-
-            //This is really verbose for some SDK scenes, eg.
-            //If they don't have FinalIK installed
-#if VRC_CLIENT && UNITY_EDITOR
-            Debug.LogWarningFormat("Could not find type {0}", name);
-#endif
-
-            _typeCache[name] = null;
-            return null;
-        }
-
         private static readonly Dictionary<Type, ImmutableArray<RequireComponent>> _requireComponentsCache = new Dictionary<Type, ImmutableArray<RequireComponent>>();
         private static void RemoveDependencies(Component rootComponent)
         {
@@ -211,13 +175,34 @@ namespace VRC.SDKBase.Validation
                         continue;
                     }
 
-                    if(requireComponent.m_Type0 != compType && requireComponent.m_Type1 != compType && requireComponent.m_Type2 != compType)
+                    bool needsDeletion(Type reqType)
                     {
-                        continue;
+                        if (reqType == null) return false;
+
+                        // check if the rootComponent fullfills this type requirement of siblingComponent
+                        if (!reqType.IsAssignableFrom(compType)) return false;
+
+                        // check if we're _the only one_ fullfilling it, as there might be subclasses of the base reqType we do allow
+                        // in which case we don't need to remove this sibling
+                        var fullfilledByOthers = false;
+                        foreach (var candidate in components)
+                        {
+                            if (candidate == null) continue;
+                            if (candidate == siblingComponent) continue;
+                            if (candidate == rootComponent) continue;
+                            if (reqType.IsAssignableFrom(candidate.GetType()))
+                                fullfilledByOthers = true;
+                        }
+                        if (fullfilledByOthers) return false; // something else fullfills us, we can stay
+
+                        return true;
                     }
 
-                    deleteMe = true;
-                    break;
+                    deleteMe |= needsDeletion(requireComponent.m_Type0);
+                    deleteMe |= deleteMe || needsDeletion(requireComponent.m_Type1);
+                    deleteMe |= deleteMe || needsDeletion(requireComponent.m_Type2);
+
+                    if (deleteMe) break;
                 }
 
                 if (deleteMe && siblingComponent != rootComponent)
@@ -246,12 +231,16 @@ namespace VRC.SDKBase.Validation
         public static void RemoveComponentsOfType<T>(GameObject target) where T : Component
         {
             if (target == null)
+            {
                 return;
+            }
 
             foreach (T comp in target.GetComponentsInChildren<T>(true))
             {
-                if (comp == null || comp.gameObject == null)
+                if (comp == null)
+                {
                     continue;
+                }
 
                 RemoveComponent(comp);
             }

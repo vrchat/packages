@@ -192,6 +192,7 @@ namespace VRC.SDKBase.Validation
             "UnityEngine.AudioEchoFilter",
             "UnityEngine.AudioChorusFilter",
             "UnityEngine.AudioReverbFilter",
+            "UnityEngine.AudioListener", // will be force-disabled on load, but can't be removed since it's a dependency for some of the above
             "UnityEngine.Playables.PlayableDirector",
             "UnityEngine.TerrainCollider",
             "UnityEngine.Canvas",
@@ -447,6 +448,7 @@ namespace VRC.SDKBase.Validation
             "VRC.SDK3.Components.VRCUiShape",
             "VRC.SDK3.Components.VRCObjectSync",
             "VRC.SDK3.Components.VRCObjectPool",
+            "VRC.SDK3.Components.VRCInputFieldKeyboardOverride",
             "VRC.SDK3.Video.Components.VRCUnityVideoPlayer",
             "VRC.SDK3.Video.Components.AVPro.VRCAVProVideoPlayer",
             "VRC.SDK3.Video.Components.AVPro.VRCAVProVideoScreen",
@@ -550,11 +552,12 @@ namespace VRC.SDKBase.Validation
             // combine whitelist types from world tags with cached whitelist
             tagWhitelistedTypes?.UnionWith(whitelist);
 
-            foreach (GameObject target in targets)
+            foreach(GameObject target in targets)
             {
                 ValidationUtils.RemoveIllegalComponents(target, tagWhitelistedTypes ?? whitelist, retry, true);
                 SecurityScan(target);
                 AddScanned(target);
+
                 // Must be called after AddScanned to avoid infinite recursion.
                 ScanDropdownTemplates(target, whitelist, config == WhiteListConfiguration.VRCSDK3);
             }
@@ -589,9 +592,10 @@ namespace VRC.SDKBase.Validation
             HashSet<Type> whitelist = ValidationUtils.WhitelistedTypes("world" + config, ComponentTypeWhiteList);
             ScanGameObject(target, whitelist, config == WhiteListConfiguration.VRCSDK3);
         }
+
         private static void ScanGameObject(GameObject target, HashSet<Type> whitelist, bool isSDK3)
         {
-            if (WasScanned(target))
+            if(WasScanned(target))
             {
                 return;
             }
@@ -649,8 +653,8 @@ namespace VRC.SDKBase.Validation
 
                 ScanGameObject(dropdownTemplate.transform.root.gameObject, whitelist, isSDK3);
             }
-
-#if TextMeshPro
+            
+            #if TextMeshPro
             TMP_Dropdown[] tmpDropdowns = target.GetComponentsInChildren<TMP_Dropdown>(true);
             foreach(TMP_Dropdown textMeshProDropdown in tmpDropdowns)
             {
@@ -667,7 +671,7 @@ namespace VRC.SDKBase.Validation
 
                 ScanGameObject(dropdownTemplate.transform.root.gameObject, whitelist, isSDK3);
             }
-#endif
+            #endif
         }
 
         private static void StripPlayableDirectorWithPrefabs(PlayableDirector playableDirector)
