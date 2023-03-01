@@ -1,0 +1,17 @@
+{
+	"name" : "Official",
+	"description" : "Official Packages for the VRChat SDK",
+	"author" : {
+		"email" : "developer@vrchat.com",
+		"name" : "VRChat",
+		"url" : "https://hello.vrchat.com"
+	},
+	"infoLink" : {
+		"url" : "http://github.com/vrchat/packages",
+		"text" : "View on GitHub"
+	},
+	"bannerUrl" : "banner.png",
+	"url" : "https://vrchat.github.io/packages/index.json",
+	"githubRepos" : [ "vrchat/packages" ],
+	"packages" : []
+}
