@@ -1,4 +1,5 @@
-﻿using UnityEditor;
+﻿using System;
+using UnityEditor;
 using UnityEngine;
 using VRC.Core;
 using VRC.Editor;
@@ -249,6 +250,14 @@ public partial class VRCSdkControlPanel : EditorWindow
     [UnityEditor.Callbacks.DidReloadScripts(int.MaxValue)]
     static void DidReloadScripts()
     {
-        RefreshApiUrlSetting();
+        try
+        {
+            RefreshApiUrlSetting();
+        }
+        catch(Exception e)
+        {
+            //Unity's Mono is trash and randomly fails to assemblies types.
+            Debug.LogException(e);
+        }
     }
 }

@@ -105,7 +105,7 @@ namespace VRC.SDK3.Editor
             GUILayout.EndVertical();
             GUILayout.BeginVertical(GUILayout.Width(200));
             EditorGUILayout.Space();
-            VRCSettings.NumClients = EditorGUILayout.IntField("Number of Clients", VRCSettings.NumClients, GUILayout.MaxWidth(190));
+            VRCSettings.NumClients = EditorGUILayout.IntField("Number of Clients", Mathf.Clamp(VRCSettings.NumClients, 0, 8), GUILayout.MaxWidth(190));
             EditorGUILayout.Space();
             VRCSettings.ForceNoVR = EditorGUILayout.Toggle("Force Non-VR", VRCSettings.ForceNoVR, GUILayout.MaxWidth(190));
             EditorGUILayout.Space();

@@ -24,6 +24,9 @@ using UnityEngine.SceneManagement;
 using System.Text;
 using UnityEditor;
 #endif
+#if VRC_CLIENT
+using Cysharp.Threading.Tasks;
+#endif
 
 namespace VRC.Core
 {
@@ -86,6 +89,20 @@ namespace VRC.Core
             return accessFilterDictionary;
         }
 
+        #if VRC_CLIENT
+        [RuntimeInitializeOnLoadMethod]
+        private static void InitializeLazy()
+        {
+            DoInit().Forget();
+            async UniTask<(Dictionary<Type,TypeInfo>, Dictionary<Type,AllowedMethodFilter>)> DoInit()
+            {
+                // This will cause the Lazy<T> to initialize the value off the main thread as soon as the client starts.
+                await UniTask.SwitchToThreadPool();
+                return (_typesWithUnityEventFields.Value, _allowedUnityEventTargetTypes.Value);
+            }
+        }
+        #endif
+
         #if !VRC_CLIENT && UNITY_EDITOR && VRC_SDK_VRCSDK3
         [RuntimeInitializeOnLoadMethod]
         private static void SetupPlayMode()
@@ -127,10 +144,13 @@ namespace VRC.Core
         private static Dictionary<Type, TypeInfo> InitTypesWithUnityEvents()
         {
             Dictionary<Type, TypeInfo> releventTypes = new Dictionary<Type, TypeInfo>();
-            List<Type> checkedTypes = new List<Type>();
+            HashSet<Type> checkedTypes = new HashSet<Type>();
 
             foreach (Assembly assembly in AppDomain.CurrentDomain.GetAssemblies())
             {
+                if (assembly.GetName().Name.StartsWith("System") || assembly.GetName().Name == "mscorlib")
+                    continue;
+
                 foreach (Type type in assembly.GetTypes())
                 {
                     if (typeof(Component).IsAssignableFrom(type) == false)
@@ -214,6 +234,11 @@ namespace VRC.Core
         [PublicAPI]
         public static void FilterEvents(GameObject gameObject)
         {
+#if VRC_CLIENT
+            if (RoomManager.isInternalWorld || RoomManager.nextRoomIsInternalWorld)
+                return;
+#endif
+
             FilterUnityEvents(gameObject);
             FilterAnimatorEvents(gameObject);
         }
@@ -221,6 +246,11 @@ namespace VRC.Core
         [PublicAPI]
         public static void FilterEvents(List<GameObject> gameObjects)
         {
+#if VRC_CLIENT
+            if (RoomManager.isInternalWorld || RoomManager.nextRoomIsInternalWorld)
+                return;
+#endif
+        
             FilterUnityEvents(gameObjects);
             FilterAnimatorEvents(gameObjects);
         }

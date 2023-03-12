@@ -4,6 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 using VRC.Core;
 using VRC.SDKBase;
+using VRC.SDK3.Image;
 
 namespace VRCSDK2
 {

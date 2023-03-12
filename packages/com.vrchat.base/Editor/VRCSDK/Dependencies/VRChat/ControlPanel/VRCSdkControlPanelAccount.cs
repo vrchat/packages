@@ -4,6 +4,13 @@ using VRC.Core;
 using System.Text.RegularExpressions;
 using VRC.SDKBase.Editor;
 
+public enum TwoFactorType
+{
+    None,
+    TOTP,
+    Email,
+}
+
 public partial class VRCSdkControlPanel : EditorWindow
 {
     static bool isInitialized = false;
@@ -174,10 +181,7 @@ public partial class VRCSdkControlPanel : EditorWindow
                 Application.OpenURL("https://vrchat.com/register");
         }
 
-        if (showTwoFactorAuthenticationEntry)
-        {
-            OnTwoFactorAuthenticationGUI();
-        }
+        OnTwoFactorAuthenticationGUI(twoFactorAuthenticationEntryType);
 
         GUILayout.EndVertical();
         GUILayout.Space(ACCOUNT_LOGIN_BORDER_SPACING);
@@ -241,8 +245,10 @@ public partial class VRCSdkControlPanel : EditorWindow
 
     private const string TWO_FACTOR_AUTHENTICATION_HELP_URL = "https://docs.vrchat.com/docs/setup-2fa";
 
-    private const string ENTER_2FA_CODE_TITLE_STRING = "Enter a numeric code from your authenticator app (or one of your saved recovery codes).";
+    private const string ENTER_2FA_CODE_TITLE_STRING = "Enter a numeric code from your authenticator app.";
     private const string ENTER_2FA_CODE_LABEL_STRING = "Code:";
+
+    private const string ENTER_EMAIL_2FA_CODE_TITLE_STRING = "Check your email for a numeric code.";
 
     private const string CHECKING_2FA_CODE_STRING = "Checking code...";
     private const string ENTER_2FA_CODE_INVALID_CODE_STRING = "Invalid Code";
@@ -265,19 +271,19 @@ public partial class VRCSdkControlPanel : EditorWindow
 
     static System.Action onAuthenticationVerifiedAction;
 
-    static bool _showTwoFactorAuthenticationEntry = false;
+    static TwoFactorType _twoFactorAuthenticationEntryType = TwoFactorType.None;
 
-    static bool showTwoFactorAuthenticationEntry
+    static TwoFactorType twoFactorAuthenticationEntryType
     {
         get
         {
-            return _showTwoFactorAuthenticationEntry;
+            return _twoFactorAuthenticationEntryType;
         }
         set
         {
-            _showTwoFactorAuthenticationEntry = value;
+            _twoFactorAuthenticationEntryType = value;
             authenticationCode = "";
-            if (!_showTwoFactorAuthenticationEntry && !authorizationCodeWasVerified)
+            if (_twoFactorAuthenticationEntryType == TwoFactorType.None && !authorizationCodeWasVerified)
                 Logout();
         }
     }
@@ -313,8 +319,11 @@ public partial class VRCSdkControlPanel : EditorWindow
         return isValid2faRecoveryCode;
     }
 
-    static void OnTwoFactorAuthenticationGUI()
+    static void OnTwoFactorAuthenticationGUI(TwoFactorType twoFactorType)
     {
+        if (twoFactorType == TwoFactorType.None)
+            return;
+
         const int ENTER_2FA_CODE_BORDER_SIZE = 20;
         const int ENTER_2FA_CODE_BUTTON_WIDTH = 260;
         const int ENTER_2FA_CODE_VERIFY_BUTTON_WIDTH = ENTER_2FA_CODE_BUTTON_WIDTH / 2;
@@ -372,7 +381,17 @@ public partial class VRCSdkControlPanel : EditorWindow
             GUIStyle titleStyle = new GUIStyle(EditorStyles.label);
             titleStyle.alignment = TextAnchor.MiddleCenter;
             titleStyle.wordWrap = true;
-            EditorGUILayout.LabelField(ENTER_2FA_CODE_TITLE_STRING, titleStyle, GUILayout.Width(ENTER_2FA_CODE_MIN_WINDOW_WIDTH - (2 * ENTER_2FA_CODE_BORDER_SIZE)), GUILayout.Height(WARNING_ICON_SIZE), GUILayout.ExpandHeight(true));
+            string twofactorTitle = "Enter Code";
+            switch (twoFactorType)
+            {
+                case TwoFactorType.TOTP:
+                    twofactorTitle = ENTER_2FA_CODE_TITLE_STRING;
+                    break;
+                case TwoFactorType.Email:
+                    twofactorTitle = ENTER_EMAIL_2FA_CODE_TITLE_STRING;
+                    break;
+            }    
+            EditorGUILayout.LabelField(twofactorTitle, titleStyle, GUILayout.Width(ENTER_2FA_CODE_MIN_WINDOW_WIDTH - (2 * ENTER_2FA_CODE_BORDER_SIZE)), GUILayout.Height(WARNING_ICON_SIZE), GUILayout.ExpandHeight(true));
             GUILayout.FlexibleSpace();
             GUILayout.Space(ENTER_2FA_CODE_BORDER_SIZE);
             EditorGUILayout.EndHorizontal();
@@ -389,14 +408,24 @@ public partial class VRCSdkControlPanel : EditorWindow
         if (GUILayout.Button(ENTER_2FA_CODE_VERIFY_STRING, GUILayout.Width(ENTER_2FA_CODE_VERIFY_BUTTON_WIDTH)))
         {
             checkingCode = true;
-            APIUser.VerifyTwoFactorAuthCode(authenticationCode, isValidAuthenticationCode ? API2FA.TIME_BASED_ONE_TIME_PASSWORD_AUTHENTICATION : API2FA.ONE_TIME_PASSWORD_AUTHENTICATION, username, password,
+            string authCodeType = API2FA.TIME_BASED_ONE_TIME_PASSWORD_AUTHENTICATION;
+            switch (twoFactorType)
+            {
+                case TwoFactorType.TOTP:
+                    authCodeType = API2FA.TIME_BASED_ONE_TIME_PASSWORD_AUTHENTICATION;
+                    break;
+                case TwoFactorType.Email:
+                    authCodeType = API2FA.EMAIL_BASED_ONE_TIME_PASSWORD_AUTHENTICATION;
+                    break;
+            }
+            APIUser.VerifyTwoFactorAuthCode(authenticationCode, authCodeType, username, password,
                     delegate
                     {
                         // valid 2FA code submitted
                         entered2faCodeIsInvalid = false;
                         authorizationCodeWasVerified = true;
                         checkingCode = false;
-                        showTwoFactorAuthenticationEntry = false;
+                        twoFactorAuthenticationEntryType = TwoFactorType.None;
                         if (null != onAuthenticationVerifiedAction)
                             onAuthenticationVerifiedAction();
                     },
@@ -444,7 +473,7 @@ public partial class VRCSdkControlPanel : EditorWindow
         EditorGUILayout.BeginHorizontal();
         if (GUILayout.Button(ENTER_2FA_CODE_CANCEL_STRING))
         {
-            showTwoFactorAuthenticationEntry = false;
+            twoFactorAuthenticationEntryType = TwoFactorType.None;
             Logout();
         }
         EditorGUILayout.EndHorizontal();
@@ -509,7 +538,13 @@ public partial class VRCSdkControlPanel : EditorWindow
             {
                 if (c.Cookies.ContainsKey("auth"))
                     ApiCredentials.Set(username, username, "vrchat", c.Cookies["auth"]);
-                showTwoFactorAuthenticationEntry = true;
+                API2FA model2FA = c.Model as API2FA;
+                if (model2FA.requiresTwoFactorAuth.Contains(API2FA.TIME_BASED_ONE_TIME_PASSWORD_AUTHENTICATION))
+                    twoFactorAuthenticationEntryType = TwoFactorType.TOTP;
+                else if (model2FA.requiresTwoFactorAuth.Contains(API2FA.EMAIL_BASED_ONE_TIME_PASSWORD_AUTHENTICATION))
+                    twoFactorAuthenticationEntryType = TwoFactorType.Email;
+                else
+                    twoFactorAuthenticationEntryType = TwoFactorType.None;
                 onAuthenticationVerifiedAction = OnAuthenticationCompleted;
             }
         );

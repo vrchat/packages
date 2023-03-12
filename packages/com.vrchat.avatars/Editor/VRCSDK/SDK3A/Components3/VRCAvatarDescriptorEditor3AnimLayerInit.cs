@@ -122,8 +122,9 @@ public partial class AvatarDescriptorEditor3 : Editor
 
     void InitAnimLayer(SerializedProperty list, VRCAvatarDescriptor.AnimLayerType type, bool isDefault, int index = -1)
     {
-        list.InsertArrayElementAtIndex(list.arraySize);
-        var element = list.GetArrayElementAtIndex((index == -1) ? (list.arraySize - 1) : index);
+        int position = index == -1 ? list.arraySize : index;
+        list.InsertArrayElementAtIndex(position);
+        var element = list.GetArrayElementAtIndex(position);
 
         element.FindPropertyRelative("type").enumValueIndex = (int)type;
         element.FindPropertyRelative("isDefault").boolValue = isDefault;
@@ -158,11 +159,12 @@ public partial class AvatarDescriptorEditor3 : Editor
                     }
                 }
 
+                int index = 1;
                 if (!haveAdditive)
-                    InitAnimLayer(_baseAnimLayers, VRCAvatarDescriptor.AnimLayerType.Additive, true, 1);
+                    InitAnimLayer(_baseAnimLayers, VRCAvatarDescriptor.AnimLayerType.Additive, true, index++);
 
                 if (!haveGesture)
-                    InitAnimLayer(_baseAnimLayers, VRCAvatarDescriptor.AnimLayerType.Gesture, true, 2);
+                    InitAnimLayer(_baseAnimLayers, VRCAvatarDescriptor.AnimLayerType.Gesture, true, index++);
             }
             else
             {

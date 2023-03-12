@@ -11,6 +11,7 @@ namespace VRC.SDKBase.Editor
         public bool samplesImported = false;
         public bool allowVRCPackageChanges = false;
         public bool samplesHintCreated = false;
+        public bool debugVCCConnection = false;
 
         protected internal static VRCPackageSettings Create()
         {

@@ -318,16 +318,21 @@ namespace VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI
             typeString = typeString.Replace("Single", "float");
             typeString = typeString.Replace("Int32", "int");
             typeString = typeString.Replace("String", "string");
+            typeString = typeString.Replace("VRCstring", "VRCString");
             typeString = typeString.Replace("VRCUdonCommonInterfacesIUdonEventReceiver", "UdonBehaviour");
             typeString = typeString.Replace("UdonCommonInterfacesIUdonEventReceiver", "UdonBehaviour");
             typeString = typeString.Replace("IUdonEventReceiver", "UdonBehaviour");
             typeString = typeString.Replace("Const_VRCUdonCommonInterfacesIUdonEventReceiver", "UdonBehaviour");
+
+
             if(typeString != "SystemArray")
             {
                 typeString = typeString.Replace("Array", "[]");
             }
 
             typeString = typeString.Replace("SDK3VideoComponentsBaseBase", "");
+            typeString = typeString.Replace("SDK3stringLoading", "");
+            typeString = typeString.Replace("SDK3Image", "");
             typeString = typeString.Replace("SDKBase", "");
             typeString = typeString.Replace("SDK3Components", "");
             typeString = typeString.Replace("VRCVRC", "VRC");

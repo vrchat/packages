@@ -13,6 +13,7 @@ public partial class AvatarDescriptorEditor3 : Editor
     VRC.Core.PipelineManager pipelineManager;
 
     static bool _repaint = false;
+    static bool _wasHuman = false;
 
     public void OnEnable()
     {
@@ -67,6 +68,12 @@ public partial class AvatarDescriptorEditor3 : Editor
                 VRCSdkControlPanelAvatarBuilder.SelectAvatar(avatarDescriptor);
         }
 
+        if (_animator && (_animator.isHuman != _wasHuman))
+        {
+          EnforceAnimLayerSetup();
+          _repaint = true;
+        }
+
         DrawView();
         DrawLipSync();
         DrawEyeLook();
@@ -78,8 +85,11 @@ public partial class AvatarDescriptorEditor3 : Editor
 
         serializedObject.ApplyModifiedProperties();
 
+
         if (_repaint)
             EditorUtility.SetDirty(target);
+
+        _wasHuman = _animator && _animator.isHuman;
     }
 
     void DrawFooter()

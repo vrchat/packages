@@ -9,6 +9,7 @@ using System.Resources;
 using VRC.Core;
 using System;
 using System.IO;
+using VRC.SDK3.Image;
 #if UNITY_EDITOR
 using UnityEditor;
 #endif

@@ -11,6 +11,9 @@ using UnityEditor.SceneManagement;
 using UnityEditorInternal;
 using UnityEngine;
 using UnityEngine.Assertions;
+using VRC.SDK3.Components;
+using VRC.SDK3.Image;
+using VRC.SDKBase.Editor.Source.Helpers;
 using VRC.Udon.Common;
 using VRC.Udon.Common.Interfaces;
 using VRC.Udon.ProgramSources;
@@ -199,6 +202,7 @@ namespace VRC.Udon.Editor.ProgramSources
             foreach(string exportedSymbol in exportedSymbolNames)
             {
                 Type symbolType = symbolTable.GetSymbolType(exportedSymbol);
+
                 if(publicVariables == null)
                 {
                     DrawPublicVariableField(exportedSymbol, GetPublicVariableDefaultValue(exportedSymbol, symbolType), symbolType, ref dirty, false);
@@ -221,6 +225,26 @@ namespace VRC.Udon.Editor.ProgramSources
                 }
 
                 variableValue = DrawPublicVariableField(exportedSymbol, variableValue, symbolType, ref dirty, true);
+                
+                if (variableValue == null && symbolType.Equals(typeof(VRCUrlInputField)))
+                {
+                    var foundPlayer = udonBehaviour.GetComponentInChildren<VRCUrlInputField>(true);
+                    if (foundPlayer != null)
+                    {
+                        variableValue = foundPlayer;
+                        dirty = true;
+                    }
+                    else
+                    {
+                        EditorGUILayout.HelpBox("Your InputField isn't set - Try reloading the SDK if this is unexpected.", MessageType.Warning);
+                        if (GUILayout.Button("Reload SDK"))
+                        {
+                            ReloadUtil.ReloadSDK(false);
+                            ReloadUtil.ReloadCurrentScene();
+                        }
+                    }
+                }
+                
                 if(!dirty)
                 {
                     continue;
@@ -2042,6 +2066,94 @@ namespace VRC.Udon.Editor.ProgramSources
                     variableValue = InternalEditorUtility.ConcatenatedLayersMaskToLayerMask(tempMask);
                     if (EditorGUI.EndChangeCheck())
                     {
+                        dirty = true;
+                    }
+                }
+                else if (variableType == typeof(TextureInfo))
+                {
+                    TextureInfo colorValue = (TextureInfo)variableValue;
+                    if(variableValue == null)
+                        colorValue = new TextureInfo();
+                    EditorGUI.BeginChangeCheck();
+                    EditorGUILayout.BeginVertical();
+                    EditorGUILayout.LabelField(symbol);
+                    EditorGUI.indentLevel++;
+                    colorValue.GenerateMipMaps = EditorGUILayout.Toggle("GenerateMipMaps", colorValue.GenerateMipMaps);
+                    colorValue.FilterMode = (FilterMode)EditorGUILayout.EnumPopup("FilterMode", colorValue.FilterMode);
+                    colorValue.WrapModeU = (TextureWrapMode)EditorGUILayout.EnumPopup("WrapModeU", colorValue.WrapModeU);
+                    colorValue.WrapModeV = (TextureWrapMode)EditorGUILayout.EnumPopup("WrapModeV", colorValue.WrapModeV);
+                    colorValue.WrapModeW = (TextureWrapMode)EditorGUILayout.EnumPopup("WrapModeW", colorValue.WrapModeW);
+                    colorValue.AnisoLevel = EditorGUILayout.IntSlider("AnisoLevel", colorValue.AnisoLevel, 0, 16);
+                    colorValue.MaterialProperty = EditorGUILayout.TextField("MaterialProperty", colorValue.MaterialProperty);
+                    variableValue = colorValue;
+                    EditorGUI.indentLevel--;
+                    EditorGUILayout.EndVertical();
+                    if (EditorGUI.EndChangeCheck())
+                    {
+                        dirty = true;
+                    }
+                } 
+                else if (variableType == typeof(TextureInfo[]))
+                {
+                    EditorGUI.BeginChangeCheck();
+                    EditorGUILayout.BeginVertical();
+
+                    GUI.SetNextControlName("NodeField");
+                    bool showArray = false;
+                    if (_arrayStates.ContainsKey(symbol))
+                        showArray = _arrayStates[symbol];
+                    else
+                        _arrayStates.Add(symbol, false);
+                    showArray = EditorGUILayout.Foldout(showArray, symbol, true);
+                    _arrayStates[symbol] = showArray;
+
+                    TextureInfo[] valueArray = (TextureInfo[])variableValue;
+
+                    if (valueArray == null) valueArray = new TextureInfo[0];
+
+                    if (showArray)
+                    {
+                        EditorGUI.indentLevel++;
+                        int newSize = EditorGUILayout.IntField(
+                            "size:",
+                            valueArray != null && valueArray.Length > 0 ? valueArray.Length : 1);
+                        newSize = newSize >= 0 ? newSize : 0;
+                        Array.Resize(ref valueArray, newSize);
+
+                        if (valueArray != null && valueArray.Length > 0)
+                        {
+                            for (int i = 0; i < valueArray.Length; i++)
+                            {
+                                GUI.SetNextControlName("NodeField");
+
+                                TextureInfo colorValue = valueArray[i];
+
+                                if (colorValue == null)
+                                    colorValue = new TextureInfo();
+
+                                EditorGUILayout.BeginVertical();
+                                EditorGUILayout.LabelField(symbol + " " + i);
+                                EditorGUI.indentLevel++;
+                                colorValue.GenerateMipMaps = EditorGUILayout.Toggle("GenerateMipMaps", colorValue.GenerateMipMaps);
+                                colorValue.FilterMode = (FilterMode)EditorGUILayout.EnumPopup("FilterMode", colorValue.FilterMode);
+                                colorValue.WrapModeU = (TextureWrapMode)EditorGUILayout.EnumPopup("WrapModeU", colorValue.WrapModeU);
+                                colorValue.WrapModeV = (TextureWrapMode)EditorGUILayout.EnumPopup("WrapModeV", colorValue.WrapModeV);
+                                colorValue.WrapModeW = (TextureWrapMode)EditorGUILayout.EnumPopup("WrapModeW", colorValue.WrapModeW);
+                                colorValue.AnisoLevel = EditorGUILayout.IntSlider("AnisoLevel", colorValue.AnisoLevel, 0, 16);
+                                colorValue.MaterialProperty = EditorGUILayout.TextField("MaterialProperty", colorValue.MaterialProperty);
+                                EditorGUI.indentLevel--;
+                                EditorGUILayout.EndVertical();
+
+                                valueArray[i] = colorValue;
+                            }
+                        }
+                        EditorGUI.indentLevel--;
+                    }
+
+                    EditorGUILayout.EndVertical();
+                    if (EditorGUI.EndChangeCheck())
+                    {
+                        variableValue = valueArray;
                         dirty = true;
                     }
                 }
