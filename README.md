@@ -1,7 +1,4 @@
-# VRChat Curated packages Listing WIP
-
-### Build Listing
-[build-listing.yml](.github/workflows/build-listing.yml)
+# VRChat Official Packages Listing WIP
 
 ## Status
-![GitHub deployments](https://img.shields.io/github/deployments/vrchat-community/vpm-listing-curated/github-pages?label=Generate%20Listing)
+![GitHub deployments](https://img.shields.io/github/actions/workflow/status/vrchat/packages/build-listing.yml?label=Build%20Package%20Listing)
