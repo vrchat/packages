@@ -9,6 +9,59 @@ namespace VRC.SDKBase.Validation
 {
     public static class ValidationUtils
     {
+        private static string _EDITOR_ONLY_TAG = "EditorOnly";
+
+        private static bool IsEditorOnly(Component component)
+        {
+            if (component.CompareTag(_EDITOR_ONLY_TAG))
+            {
+                return true;
+            }
+
+            foreach (var t in component.transform.GetComponentsInParent<Transform>(true))
+            {
+                if (t.CompareTag(_EDITOR_ONLY_TAG))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        public static List<T> GetComponentsInChildrenExcludingEditorOnly<T>(this GameObject target, bool includeInactive) where T : Component
+        {
+            List<T> foundComponents = new List<T>();
+            T[] allComponents = target.GetComponentsInChildren<T>(includeInactive);
+            foreach (T component in allComponents)
+            {
+                if (component == null || IsEditorOnly(component))
+                {
+                    continue;
+                }
+
+                foundComponents.Add(component);
+            }
+
+            return foundComponents;
+        }
+
+        public static List<Component> GetComponentsInChildrenExcludingEditorOnly(this GameObject target, Type type, bool includeInactive)
+        {
+            List<Component> foundComponents = new List<Component>();
+            Component[] allComponents = target.GetComponentsInChildren(type, includeInactive);
+            foreach (Component component in allComponents)
+            {
+                if (component == null || IsEditorOnly(component))
+                {
+                    continue;
+                }
+
+                foundComponents.Add(component);
+            }
+
+            return foundComponents;
+        }
+
         public static void RemoveIllegalComponents(GameObject target, HashSet<Type> whitelist, bool retry = true, bool onlySceneObjects = false, bool logStripping = true)
         {
             List<Component> foundComponents = FindIllegalComponents(target, whitelist);
@@ -35,25 +88,16 @@ namespace VRC.SDKBase.Validation
 
         public static List<Component> FindIllegalComponents(GameObject target, HashSet<Type> whitelist)
         {
-            List<Component> foundComponents = new List<Component>();
-            Component[] allComponents = target.GetComponentsInChildren<Component>(true);
-            foreach(Component component in allComponents)
+            List<Component> components = target.GetComponentsInChildrenExcludingEditorOnly<Component>(true);
+            for (int i = components.Count - 1; i >= 0; i--)
             {
-                if(component == null)
+                Component component = components[i];
+                if (component == null || whitelist.Contains(component.GetType()) || component is IEditorOnly)
                 {
-                    continue;
+                    components.RemoveAt(i);
                 }
-
-                Type componentType = component.GetType();
-                if(whitelist.Contains(componentType))
-                {
-                    continue;
-                }
-
-                foundComponents.Add(component);
             }
-
-            return foundComponents;
+            return components;
         }
 
         private static readonly Dictionary<string, HashSet<Type>> _whitelistCache = new Dictionary<string, HashSet<Type>>();

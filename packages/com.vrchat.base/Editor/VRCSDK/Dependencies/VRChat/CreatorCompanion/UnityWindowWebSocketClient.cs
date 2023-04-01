@@ -107,6 +107,13 @@ namespace VRC.PackageManagement
                     {
                         LogForWebsocket("Closing WebSocket connection");
                         await Disconnect();
+                        
+#pragma warning disable 4014
+                        _client.Dispose();
+                        _client = new ClientWebSocket();
+                        RetryConnectionAsync();
+#pragma warning restore 4014
+                        
                         break;
                     }
 
@@ -149,11 +156,6 @@ namespace VRC.PackageManagement
             {
                 LogForWebsocket(ex.Message);
             }
-        }
-
-        private void ServerDisconnected()
-        {
-            
         }
 
         public async Task Disconnect()

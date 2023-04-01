@@ -34,6 +34,7 @@ MonoBehaviour:
   physicsColliderCount: 1
   physicsRigidbodyCount: 1
   audioSourceCount: 4
+  textureMegabytes: 75
   dynamicBone:
     componentCount: 4
     transformCount: 16

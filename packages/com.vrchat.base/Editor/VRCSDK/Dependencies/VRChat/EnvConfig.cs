@@ -697,29 +697,69 @@ namespace VRC.Editor
             const string graphicsSettingsAssetPath = "ProjectSettings/GraphicsSettings.asset";
             SerializedObject graphicsManager = new SerializedObject(AssetDatabase.LoadAllAssetsAtPath(graphicsSettingsAssetPath)[0]);
 
+            // We'll use this flag to determine if we need to save the asset.
+            bool isDirty = false;
+            
+            //get the current value of the property
+                //- don't touch it if it matches the new value
+                //- otherwise set the property's value to the new value
+                //- set isDirty
+
             SerializedProperty deferred = graphicsManager.FindProperty("m_Deferred.m_Mode");
-            deferred.enumValueIndex = 1;
+            if (deferred.enumValueIndex != 1)
+            {
+                deferred.enumValueIndex = 1;
+                isDirty = true;
+            }
 
             SerializedProperty deferredReflections = graphicsManager.FindProperty("m_DeferredReflections.m_Mode");
-            deferredReflections.enumValueIndex = 1;
-
+            if (deferredReflections.enumValueIndex != 1)
+            {
+                deferredReflections.enumValueIndex = 1;
+                isDirty = true;
+            }
+            
             SerializedProperty screenSpaceShadows = graphicsManager.FindProperty("m_ScreenSpaceShadows.m_Mode");
-            screenSpaceShadows.enumValueIndex = 1;
-
+            if (screenSpaceShadows.enumValueIndex != 1)
+            {
+                screenSpaceShadows.enumValueIndex = 1;
+                isDirty = true;
+            }
+            
             SerializedProperty legacyDeferred = graphicsManager.FindProperty("m_LegacyDeferred.m_Mode");
-            legacyDeferred.enumValueIndex = 1;
-
+            if (legacyDeferred.enumValueIndex != 1)
+            {
+                legacyDeferred.enumValueIndex = 1;
+                isDirty = true;
+            }
+            
             SerializedProperty depthNormals = graphicsManager.FindProperty("m_DepthNormals.m_Mode");
-            depthNormals.enumValueIndex = 1;
-
+            if (depthNormals.enumValueIndex != 1)
+            {
+                depthNormals.enumValueIndex = 1;
+                isDirty = true;
+            }
+            
             SerializedProperty motionVectors = graphicsManager.FindProperty("m_MotionVectors.m_Mode");
-            motionVectors.enumValueIndex = 1;
-
+            if (motionVectors.enumValueIndex != 1)
+            {
+                motionVectors.enumValueIndex = 1;
+                isDirty = true;
+            }
+            
             SerializedProperty lightHalo = graphicsManager.FindProperty("m_LightHalo.m_Mode");
-            lightHalo.enumValueIndex = 1;
-
+            if (lightHalo.enumValueIndex != 1)
+            {
+                lightHalo.enumValueIndex = 1;
+                isDirty = true;
+            }
+            
             SerializedProperty lensFlare = graphicsManager.FindProperty("m_LensFlare.m_Mode");
-            lensFlare.enumValueIndex = 1;
+            if (lensFlare.enumValueIndex != 1)
+            {
+                lensFlare.enumValueIndex = 1;
+                isDirty = true;
+            }
 
             #if ENV_SET_INCLUDED_SHADERS && VRC_CLIENT
             // clear GraphicsSettings->Always Included Shaders - these cause a +5s app startup time increase on Quest.
@@ -783,72 +823,156 @@ namespace VRC.Editor
             }
             #else
             SerializedProperty alwaysIncluded = graphicsManager.FindProperty("m_AlwaysIncludedShaders");
-            alwaysIncluded.arraySize = 0;
+            if (alwaysIncluded.arraySize != 0)
+            {
+                alwaysIncluded.arraySize = 0;
+                isDirty = true;
+            }
             #endif
 
             SerializedProperty preloaded = graphicsManager.FindProperty("m_PreloadedShaders");
-            preloaded.ClearArray();
-            preloaded.arraySize = 0;
+            if (preloaded.arraySize != 0)
+            {
+                preloaded.ClearArray();
+                preloaded.arraySize = 0;
+                isDirty = true;
+            }
 
             SerializedProperty spritesDefaultMaterial = graphicsManager.FindProperty("m_SpritesDefaultMaterial");
-            spritesDefaultMaterial.objectReferenceValue = Shader.Find("Sprites/Default");
+            if (spritesDefaultMaterial.objectReferenceValue == null || spritesDefaultMaterial.objectReferenceValue.name != "Sprites-Default")
+            {
+                spritesDefaultMaterial.objectReferenceValue = Shader.Find("Sprites/Default");
+                isDirty = true;
+            }
 
             SerializedProperty renderPipeline = graphicsManager.FindProperty("m_CustomRenderPipeline");
-            renderPipeline.objectReferenceValue = null;
+            if (renderPipeline.objectReferenceValue != null)
+            {
+                renderPipeline.objectReferenceValue = null;
+                isDirty = true;
+            }
 
             SerializedProperty transparencySortMode = graphicsManager.FindProperty("m_TransparencySortMode");
-            transparencySortMode.enumValueIndex = 0;
+            if (transparencySortMode.enumValueIndex != 0)
+            {
+                transparencySortMode.enumValueIndex = 0;
+                isDirty = true;
+            }
 
             SerializedProperty transparencySortAxis = graphicsManager.FindProperty("m_TransparencySortAxis");
-            transparencySortAxis.vector3Value = Vector3.forward;
+            if (transparencySortAxis.vector3Value != Vector3.forward)
+            {
+                transparencySortAxis.vector3Value = Vector3.forward;
+                isDirty = true;
+            }
 
             SerializedProperty defaultRenderingPath = graphicsManager.FindProperty("m_DefaultRenderingPath");
-            defaultRenderingPath.intValue = 1;
+            if (defaultRenderingPath.intValue != 1)
+            {
+                defaultRenderingPath.intValue = 1;
+                isDirty = true;
+            }
 
             SerializedProperty defaultMobileRenderingPath = graphicsManager.FindProperty("m_DefaultMobileRenderingPath");
-            defaultMobileRenderingPath.intValue = 1;
+            if (defaultMobileRenderingPath.intValue != 1)
+            {
+                defaultMobileRenderingPath.intValue = 1;
+                isDirty = true;
+            }
 
             SerializedProperty tierSettings = graphicsManager.FindProperty("m_TierSettings");
-            tierSettings.ClearArray();
-            tierSettings.arraySize = 0;
+            if (tierSettings.arraySize != 0)
+            {
+                tierSettings.ClearArray();
+                tierSettings.arraySize = 0;
+                isDirty = true;
+            }
 
             #if ENV_SET_LIGHTMAP
             SerializedProperty lightmapStripping = graphicsManager.FindProperty("m_LightmapStripping");
-            lightmapStripping.enumValueIndex = 1;
+            if (lightmapStripping.enumValueIndex != 1)
+            {
+                lightmapStripping.enumValueIndex = 1;
+                isDirty = true;
+            }
 
             SerializedProperty instancingStripping = graphicsManager.FindProperty("m_InstancingStripping");
-            instancingStripping.enumValueIndex = 2;
+            if (instancingStripping.enumValueIndex != 2)
+            {
+                instancingStripping.enumValueIndex = 2;
+                isDirty = true;
+            }
 
             SerializedProperty lightmapKeepPlain = graphicsManager.FindProperty("m_LightmapKeepPlain");
-            lightmapKeepPlain.boolValue = true;
+            if (lightmapKeepPlain.boolValue != true)
+            {
+                lightmapKeepPlain.boolValue = true;
+                isDirty = true;
+            }
 
             SerializedProperty lightmapKeepDirCombined = graphicsManager.FindProperty("m_LightmapKeepDirCombined");
-            lightmapKeepDirCombined.boolValue = true;
+            if (lightmapKeepDirCombined.boolValue != true)
+            {
+                lightmapKeepDirCombined.boolValue = true;
+                isDirty = true;
+            }
 
             SerializedProperty lightmapKeepDynamicPlain = graphicsManager.FindProperty("m_LightmapKeepDynamicPlain");
-            lightmapKeepDynamicPlain.boolValue = true;
+            if (lightmapKeepDynamicPlain.boolValue != true)
+            {
+                lightmapKeepDynamicPlain.boolValue = true;
+                isDirty = true;
+            }
 
             SerializedProperty lightmapKeepDynamicDirCombined = graphicsManager.FindProperty("m_LightmapKeepDynamicDirCombined");
-            lightmapKeepDynamicDirCombined.boolValue = true;
+            if (lightmapKeepDynamicDirCombined.boolValue != true)
+            {
+                lightmapKeepDynamicDirCombined.boolValue = true;
+                isDirty = true;
+            }
 
             SerializedProperty lightmapKeepShadowMask = graphicsManager.FindProperty("m_LightmapKeepShadowMask");
-            lightmapKeepShadowMask.boolValue = true;
+            if (lightmapKeepShadowMask.boolValue != true)
+            {
+                lightmapKeepShadowMask.boolValue = true;
+                isDirty = true;
+            }
 
             SerializedProperty lightmapKeepSubtractive = graphicsManager.FindProperty("m_LightmapKeepSubtractive");
-            lightmapKeepSubtractive.boolValue = true;
+            if (lightmapKeepSubtractive.boolValue != true)
+            {
+                lightmapKeepSubtractive.boolValue = true;
+                isDirty = true;
+            }
             #endif
 
             SerializedProperty albedoSwatchInfos = graphicsManager.FindProperty("m_AlbedoSwatchInfos");
-            albedoSwatchInfos.ClearArray();
-            albedoSwatchInfos.arraySize = 0;
+            if (albedoSwatchInfos.arraySize != 0)
+            {
+                albedoSwatchInfos.ClearArray();
+                albedoSwatchInfos.arraySize = 0;
+                isDirty = true;
+            }
 
             SerializedProperty lightsUseLinearIntensity = graphicsManager.FindProperty("m_LightsUseLinearIntensity");
-            lightsUseLinearIntensity.boolValue = true;
+            if (lightsUseLinearIntensity.boolValue != true)
+            {
+                lightsUseLinearIntensity.boolValue = true;
+                isDirty = true;
+            }
 
             SerializedProperty lightsUseColorTemperature = graphicsManager.FindProperty("m_LightsUseColorTemperature");
-            lightsUseColorTemperature.boolValue = true;
+            if (lightsUseColorTemperature.boolValue != true)
+            {
+                lightsUseColorTemperature.boolValue = true;
+                isDirty = true;
+            }
 
-            graphicsManager.ApplyModifiedProperties();
+            // if isDirty, apply the modified properties to the graphicsmanager
+            if (isDirty)
+            {
+                graphicsManager.ApplyModifiedProperties();
+            }
         }
 
         public static FogSettings GetFogSettings()

@@ -1151,6 +1151,49 @@ namespace VRC.SDKBase.Validation.Performance
 
                     break;
                 }
+                case AvatarPerformanceCategory.TextureMegabytes:
+                {
+                    switch(rating)
+                    {
+                        case PerformanceRating.Excellent:
+                        case PerformanceRating.Good:
+                        {
+                            displayLevel = PerformanceInfoDisplayLevel.Verbose;
+                            text = string.Format("Texture Memory Usage: {0} MB", perfStats.textureMegabytes);
+                            break;
+                        }
+                        case PerformanceRating.Medium:
+                        case PerformanceRating.Poor:
+                        {
+                            displayLevel = PerformanceInfoDisplayLevel.Warning;
+                            text = string.Format(
+                                "Texture Memory Usage: {0} MB (Recommended: {1} MB) - Lower the resolution of your textures in the texture import settings.",
+                                perfStats.textureMegabytes,
+                                AvatarPerformanceStats.GetStatLevelForRating(PerformanceRating.Excellent, isMobilePlatform).textureMegabytes);
+
+                            break;
+                        }
+                        case PerformanceRating.VeryPoor:
+                        {
+                            displayLevel = PerformanceInfoDisplayLevel.Warning;
+                            text = string.Format(
+                                "Texture Memory Usage: {0} MB (Maximum: {1} MB, Recommended: {2} MB) - This avatar's total texture resolution is too high. " +
+                                "Lower the resolution of your largest textures in the texture import settings. " +
+                                (
+                                    ValidationEditorHelpers.IsMobilePlatform()
+                                    ? ""
+                                    : "Consider using shader features like decals or tiling. Check your shader's documentation for more information. "
+                                ) +
+                                "You can also check your model's UV layouts to better utilize texture space. These techniques may help you reduce texture memory usage.",
+                                perfStats.textureMegabytes,
+                                AvatarPerformanceStats.GetStatLevelForRating(PerformanceRating.Poor, isMobilePlatform).textureMegabytes,
+                                AvatarPerformanceStats.GetStatLevelForRating(PerformanceRating.Excellent, isMobilePlatform).textureMegabytes);
+
+                            break;
+                        }
+                    }
+                    break;
+                }
                 default:
                 {
                     text = "";

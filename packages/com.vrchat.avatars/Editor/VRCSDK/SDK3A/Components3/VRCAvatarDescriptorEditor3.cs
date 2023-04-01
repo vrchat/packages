@@ -86,7 +86,7 @@ public partial class AvatarDescriptorEditor3 : Editor
         serializedObject.ApplyModifiedProperties();
 
 
-        if (_repaint)
+        if (_repaint && ((VRCAvatarDescriptor)target).gameObject.scene.IsValid())
             EditorUtility.SetDirty(target);
 
         _wasHuman = _animator && _animator.isHuman;

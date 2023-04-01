@@ -12,6 +12,7 @@ using VRC.SDK3.Avatars.ScriptableObjects;
 using VRC.SDK3.Editor;
 using VRC.SDKBase;
 using VRC.SDKBase.Editor.BuildPipeline;
+using VRC.SDKBase.Validation;
 using VRC.SDKBase.Validation.Performance;
 using VRC.SDKBase.Validation.Performance.Stats;
 using VRCStation = VRC.SDK3.Avatars.Components.VRCStation;
@@ -306,7 +307,7 @@ namespace VRC.SDK3.Editor
                 }
             }
 
-            List<Component> componentsToRemove = AvatarValidation.FindIllegalComponents(avatar.gameObject).ToList();
+            List<Component> componentsToRemove = Validation.AvatarValidation.FindIllegalComponents(avatar.gameObject).ToList();
 
             // create a list of the PipelineSaver component(s)
             List<Component> toRemoveSilently = new List<Component>();
@@ -340,14 +341,22 @@ namespace VRC.SDK3.Editor
                     delegate { FixRestrictedComponents(toRemove); });
 
             List<AudioSource> audioSources =
-                avatar.gameObject.GetComponentsInChildren<AudioSource>(true).ToList();
+                avatar.gameObject.GetComponentsInChildrenExcludingEditorOnly<AudioSource>(true).ToList();
             if (audioSources.Count > 0)
                 _builder.OnGUIWarning(avatar,
                     "Audio sources found on Avatar, they will be adjusted to safe limits, if necessary.",
                     GetAvatarSubSelectAction(avatar, typeof(AudioSource)), null);
 
+            foreach (var audioSource in audioSources)
+            {
+                if (audioSource.clip && audioSource.clip.loadType == AudioClipLoadType.DecompressOnLoad && !audioSource.clip.loadInBackground)
+                    _builder.OnGUIError(avatar,
+                        "Found an audio clip with load type `Decompress On Load` which doesn't have `Load In Background` enabled.\nPlease enable `Load In Background` on the audio clip.", 
+                         GetAvatarAudioSourcesWithDecompressOnLoadWithoutBackgroundLoad(avatar), null);
+            }
+            
             List<VRCStation> stations =
-                avatar.gameObject.GetComponentsInChildren<VRCStation>(true).ToList();
+                avatar.gameObject.GetComponentsInChildrenExcludingEditorOnly<VRCStation>(true).ToList();
             if (stations.Count > 0)
                 _builder.OnGUIWarning(avatar, "Stations found on Avatar, they will be adjusted to safe limits, if necessary.",
                     GetAvatarSubSelectAction(avatar, typeof(VRCStation)), null);
@@ -364,7 +373,7 @@ namespace VRC.SDK3.Editor
             CheckAvatarMeshesForMeshReadWriteSetting(avatar);
 
 #if UNITY_ANDROID
-        IEnumerable<Shader> illegalShaders = AvatarValidation.FindIllegalShaders(avatar.gameObject);
+        IEnumerable<Shader> illegalShaders = VRC.SDK3.Validation.AvatarValidation.FindIllegalShaders(avatar.gameObject);
         foreach (Shader s in illegalShaders)
         {
             _builder.OnGUIError(avatar, "Avatar uses unsupported shader '" + s.name + "'. You can only use the shaders provided in 'VRChat/Mobile' for Quest avatars.", delegate () { Selection.activeObject
@@ -461,8 +470,8 @@ namespace VRC.SDK3.Editor
 
                 // we can only show these buttons if DynamicBone is installed
 
-                Type dynamicBoneType = typeof(AvatarValidation).Assembly.GetType("DynamicBone");
-                Type dynamicBoneColliderType = typeof(AvatarValidation).Assembly.GetType("DynamicBoneCollider");
+                Type dynamicBoneType = typeof(Validation.AvatarValidation).Assembly.GetType("DynamicBone");
+                Type dynamicBoneColliderType = typeof(Validation.AvatarValidation).Assembly.GetType("DynamicBoneCollider");
                 if ((dynamicBoneType != null) && (dynamicBoneColliderType != null))
                 {
                     switch (perfCategory)
@@ -525,9 +534,10 @@ namespace VRC.SDK3.Editor
             {
                 if (Core.APIUser.CurrentUser.canPublishAvatars)
                 {
-                    VRC_SdkBuilder.ExportAndTestAvatarBlueprint(avatar.gameObject);
-
-                    EditorUtility.DisplayDialog("VRChat SDK", "Test Avatar Built", "OK");
+                    if (VRC_SdkBuilder.ExportAndTestAvatarBlueprint(avatar.gameObject))
+                    {
+                        EditorUtility.DisplayDialog("VRChat SDK", "Test Avatar Built", "OK");
+                    }
                 }
                 else
                 {

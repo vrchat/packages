@@ -115,6 +115,7 @@ public class VRCExpressionParametersEditor : Editor
 				EditorGUILayout.LabelField("    Type", GUILayout.Width(100));
 				EditorGUILayout.LabelField("Default", GUILayout.Width(64));
 				EditorGUILayout.LabelField("Saved", GUILayout.Width(64));
+				EditorGUILayout.LabelField("Synced", GUILayout.Width(64));
 			}
 			EditorGUILayout.EndHorizontal();
 
@@ -184,6 +185,7 @@ public class VRCExpressionParametersEditor : Editor
 		var valueType = item.FindPropertyRelative("valueType");
 		var defaultValue = item.FindPropertyRelative("defaultValue");
 		var saved = item.FindPropertyRelative("saved");
+		var synced = item.FindPropertyRelative("networkSynced");
 
 		bool isSelected = selected == index;
 
@@ -206,6 +208,7 @@ public class VRCExpressionParametersEditor : Editor
 					break;
 			}
 			EditorGUILayout.PropertyField(saved, new GUIContent(""), GUILayout.Width(64));
+			EditorGUILayout.PropertyField(synced, new GUIContent(""), GUILayout.Width(64));
 		}
 		EditorGUILayout.EndHorizontal();
 		EditorGUI.indentLevel -= 1;

@@ -1,30 +1,30 @@
 {
-  "name": "com.vrchat.avatars",
-  "displayName": "VRChat SDK - Avatars",
-  "version": "3.1.11",
-  "unity": "2019.4",
-  "description": "Our powerful Avatars 3.0 System",
-  "vpmDependencies": {
-    "com.vrchat.base": "3.1.11"
-  },
-  "author": {
-    "name": "VRChat",
-    "email": "developer@vrchat.com",
-    "url": "https://github.com/vrchat/packages"
-  },
-  "legacyFolders": {
-    "Assets\\VRCSDK": ""
-  },
-  "samples": [
-    {
-      "displayName": "AV3 Demo Assets",
-      "description": "Basic AV3 Demo Assets",
-      "path": "Samples/AV3 Demo Assets"
-    },
-    {
-      "displayName": "Robot Avatar",
-      "description": "Demo of Avatar Dynamics",
-      "path": "Samples/Dynamics/Robot Avatar"
-    }
-  ]
+	"name" : "com.vrchat.avatars",
+	"displayName" : "VRChat SDK - Avatars",
+	"version" : "3.1.12",
+	"unity" : "2019.4",
+	"description" : "Our powerful Avatars 3.0 System",
+	"vpmDependencies" : {
+		"com.vrchat.base" : "3.1.12"
+	},
+	"author" : {
+		"name" : "VRChat",
+		"email" : "developer@vrchat.com",
+		"url" : "https://github.com/vrchat/packages"
+	},
+	"legacyFolders" : {
+		"Assets\\VRCSDK" : ""
+	},
+	"samples" : [
+		{
+			"displayName" : "AV3 Demo Assets",
+			"description" : "Basic AV3 Demo Assets",
+			"path" : "Samples/AV3 Demo Assets"
+		},
+		{
+			"displayName" : "Robot Avatar",
+			"description" : "Demo of Avatar Dynamics",
+			"path" : "Samples/Dynamics/Robot Avatar"
+		}
+	]
 }

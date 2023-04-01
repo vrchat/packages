@@ -9,6 +9,7 @@ using UnityEngine.Networking;
 using VRC.Editor;
 using VRC.SDKBase.Editor.BuildPipeline;
 using VRC.SDKBase.Editor.Validation;
+using VRC.SDKBase.Validation;
 using VRC.SDKBase.Validation.Performance;
 using VRC.SDKBase.Validation.Performance.Stats;
 using Object = UnityEngine.Object;
@@ -536,7 +537,7 @@ namespace VRC.SDKBase.Editor
                 List<Object> gos = new List<Object>();
                 foreach (Type t in types)
                 {
-                    Component[] components = avatar.GetComponentsInChildren(t, true);
+                    List<Component> components = avatar.gameObject.GetComponentsInChildrenExcludingEditorOnly(t, true);
                     foreach (Component c in components)
                         gos.Add(c.gameObject);
                 }
@@ -551,10 +552,29 @@ namespace VRC.SDKBase.Editor
             return GetAvatarSubSelectAction(avatar, t.ToArray());
         }
 
+        protected static Action GetAvatarAudioSourcesWithDecompressOnLoadWithoutBackgroundLoad(Component avatar)
+        {
+            return () =>
+            {
+                List<Object> gos = new List<Object>();
+                AudioSource[] audioSources = avatar.GetComponentsInChildren<AudioSource>(true);
+
+                foreach (var audioSource in audioSources)
+                {
+                    if (audioSource.clip && audioSource.clip.loadType == AudioClipLoadType.DecompressOnLoad && !audioSource.clip.loadInBackground)
+                    {
+                        gos.Add(audioSource.gameObject);
+                    }
+                }
+
+                Selection.objects = gos.Count > 0 ? gos.ToArray() : new Object[] { avatar.gameObject };
+            };
+        }
+
         private void VerifyAvatarMipMapStreaming(Component avatar)
         {
             List<Object> badTextures = new List<Object>();
-            foreach (Renderer r in avatar.GetComponentsInChildren<Renderer>(true))
+            foreach (Renderer r in avatar.gameObject.GetComponentsInChildrenExcludingEditorOnly<Renderer>(true))
             {
                 foreach (Material m in r.sharedMaterials)
                 {
@@ -1036,7 +1056,7 @@ namespace VRC.SDKBase.Editor
         {
             HashSet<Mesh> avatarMeshes = new HashSet<Mesh>();
             foreach (SkinnedMeshRenderer avatarSkinnedMeshRenderer in avatar
-                .GetComponentsInChildren<SkinnedMeshRenderer>(true))
+                .GetComponentsInChildrenExcludingEditorOnly<SkinnedMeshRenderer>(true))
             {
                 if (avatarSkinnedMeshRenderer == null)
                 {
@@ -1057,7 +1077,7 @@ namespace VRC.SDKBase.Editor
                 avatarMeshes.Add(skinnedMesh);
             }
 
-            foreach (MeshFilter avatarMeshFilter in avatar.GetComponentsInChildren<MeshFilter>(true))
+            foreach (MeshFilter avatarMeshFilter in avatar.GetComponentsInChildrenExcludingEditorOnly<MeshFilter>(true))
             {
                 if (avatarMeshFilter == null)
                 {
@@ -1079,7 +1099,7 @@ namespace VRC.SDKBase.Editor
             }
 
             foreach (ParticleSystemRenderer avatarParticleSystemRenderer in avatar
-                .GetComponentsInChildren<ParticleSystemRenderer>(true))
+                .GetComponentsInChildrenExcludingEditorOnly<ParticleSystemRenderer>(true))
             {
                 if (avatarParticleSystemRenderer == null)
                 {

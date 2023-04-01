@@ -954,14 +954,14 @@ namespace VRC.Udon
 
         //Called via delegate by UdonSync
         [PublicAPI]
-        public void OnDeserialization()
+        public void OnDeserialization(DeserializationResult result)
         {
             if(_syncMethod == Networking.SyncType.None)
             {
                 return;
             }
 
-            RunEvent("_onDeserialization");
+            RunEvent("_onDeserialization", ("result", result));
         }
 
         #endregion

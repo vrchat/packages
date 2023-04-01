@@ -13,6 +13,8 @@ using VRC;
 
 public class VRCNetworkIDUtility : EditorWindow
 {
+    public static VRCNetworkIDUtility Instance;
+
     public class NetworkObjectRef
     {
         public int ID;
@@ -87,7 +89,7 @@ public class VRCNetworkIDUtility : EditorWindow
         
         public bool IsMatch(VRC.SDKBase.Network.NetworkIDPair netRef)
             => (Type == ConflictType.Object && IDs.Contains(netRef.ID)) 
-                || (Type == ConflictType.ID && Paths.Contains(Path(netRef.gameObject)));
+                || (Type == ConflictType.ID && Paths.Contains(VRCNetworkIDUtility.Instance.Path(netRef.gameObject)));
 
         public void AddScene(NetworkObjectRef objRef)
         {
@@ -130,7 +132,10 @@ public class VRCNetworkIDUtility : EditorWindow
     private const string titleName = "Network ID Utility";
 
     private Vector2 scrollPos;
-    private static VRC_SceneDescriptor Descriptor => VRC_SceneDescriptor.Instance;
+    private INetworkIDContainer networkTarget;
+
+    private List<INetworkIDContainer> networkTargets = new List<INetworkIDContainer>();
+    private string[] networkTargetNames;
 
     private List<Conflict> conflicts = new List<Conflict>();
     Dictionary<int, NetworkObjectRef> fileRefs = new Dictionary<int, NetworkObjectRef>();
@@ -144,6 +149,11 @@ public class VRCNetworkIDUtility : EditorWindow
         window.titleContent = new GUIContent(titleName);
         window.minSize = new Vector2(325, 410);
         window.Show();
+    }
+
+    void Awake()
+    {
+        Instance = this;
     }
 
     void Init()
@@ -203,19 +213,46 @@ public class VRCNetworkIDUtility : EditorWindow
 
         GUILayout.Space(15);
 
-        if (!Descriptor)
+        //Find network targets
+        if(networkTarget == null || networkTargets.Count == 0)
+            FindNetworkTargets();
+
+        if (networkTarget == null)
         {
-            using (new EditorGUILayout.HorizontalScope())
+            //Choose if available
+            if(networkTargets.Count > 0)
+                SetTarget(networkTargets[0]);
+            else
             {
-                GUILayout.FlexibleSpace();
-                GUILayout.Label("Please load a scene with an enabled Scene Descriptor.", EditorStyles.helpBox, GUILayout.ExpandWidth(true));
-                GUILayout.FlexibleSpace();
+                //Non-found
+                using(new EditorGUILayout.HorizontalScope())
+                {
+                    GUILayout.FlexibleSpace();
+                    //GUILayout.Label("Please load a scene with a Scene or Avatar Descriptor.", EditorStyles.helpBox, GUILayout.ExpandWidth(true));
+                    GUILayout.Label("Please load a scene with a Scene Descriptor.", EditorStyles.helpBox, GUILayout.ExpandWidth(true)); //TEMPORARY CHANGE
+                    GUILayout.FlexibleSpace();
+                }
+                return;
             }
-            return;
         }
 
+        //Choose target
+        EditorGUILayout.BeginHorizontal();
+        EditorGUI.BeginChangeCheck();
+        var targetIndex = networkTargets.IndexOf(networkTarget);
+        targetIndex = EditorGUILayout.Popup("Target", targetIndex, networkTargetNames);
+        if(EditorGUI.EndChangeCheck())
+        {
+            SetTarget(networkTargets[targetIndex]);
+        }
+        if(GUILayout.Button("Refresh", GUILayout.Width(80)))
+        {
+            FindNetworkTargets();
+        }
+        EditorGUILayout.EndHorizontal();
+
         // When players delete game objects they aren't automagically removed from the list, yet
-        Descriptor.NetworkIDs.RemoveAll(pair => pair.gameObject == null);
+        networkTarget.NetworkIDCollection.RemoveAll(pair => pair.gameObject == null);
 
         using (new EditorGUILayout.HorizontalScope())
         {
@@ -299,7 +336,7 @@ public class VRCNetworkIDUtility : EditorWindow
                 EditorGUILayout.Space(15);
             }
 
-            foreach (var netRef in Descriptor.NetworkIDs)
+            foreach (var netRef in networkTarget.NetworkIDCollection)
             {
                 if (!conflicts.Any(c => c.IsMatch(netRef)))
                 {
@@ -314,7 +351,7 @@ public class VRCNetworkIDUtility : EditorWindow
     {
         if (EditorUtility.DisplayDialog("Clear Scene IDs", "Do you wish to clear all recorded network IDs from the scene?", "Clear IDs", "No"))
         {
-            Descriptor.NetworkIDs.Clear();
+            networkTarget.NetworkIDCollection.Clear();
             conflicts.Clear();
             fileRefs.Clear();
         }
@@ -324,14 +361,14 @@ public class VRCNetworkIDUtility : EditorWindow
     {
         if (EditorUtility.DisplayDialog("Generate New Scene IDs", "Do you wish to clear all recorded network IDs from the scene, and create new ones?", "Generate New IDs", "No"))
         {
-            Descriptor.NetworkIDs.Clear();
+            networkTarget.NetworkIDCollection.Clear();
             conflicts.Clear();
             fileRefs.Clear();
 
-            var (_, newIDs) = VRC.SDKBase.Network.NetworkIDAssignment.ConfigureNetworkIDsOnScene(Descriptor.gameObject.scene);
+            var (_, newIDs) = VRC.SDKBase.Network.NetworkIDAssignment.ConfigureNetworkIDs(networkTarget);
             if (newIDs.Count() > 0)
             {
-                Descriptor.gameObject.MarkDirty();
+                ((Component)networkTarget).gameObject.MarkDirty();
                 UnityEditor.AssetDatabase.SaveAssets();
             }
         }
@@ -339,18 +376,28 @@ public class VRCNetworkIDUtility : EditorWindow
 
     void Export()
     {
-        var dict = Descriptor.NetworkIDs.ToDictionary(
+        var dict = networkTarget.NetworkIDCollection.ToDictionary(
             netRef => netRef.ID.ToString(),
             netRef => Path(netRef.gameObject));
 
         if (dict.Values.GroupBy(objPath => objPath).Any(group => group.Count() > 1)
-            && !EditorUtility.DisplayDialog("Duplicate Paths Found", "Some VRCNetworkBehaviours share the same transform path, and so an ID export will not contain all objects. Should export continue?", "Contine Export", "No"))
-            return;            
+            && !EditorUtility.DisplayDialog("Duplicate Paths Found", "Some networked behaviours share the same transform path, and so an ID export will not contain all objects. Should export continue?", "Contine Export", "No"))
+            return;
 
-        UnityEngine.SceneManagement.Scene activeScene = Descriptor.gameObject.scene;
-        string scenePrefix = activeScene == null ? "" : activeScene.name + "_"; // Should never be null, of course.
+        var activeScene = ((Component)networkTarget).gameObject.scene;
+        string filePrefix;
+        switch(networkTarget)
+        {
+            case VRC_SceneDescriptor sceneDesc:
+                filePrefix = activeScene == null ? "" : activeScene.name + "_"; // Should never be null, of course.
+                break;
+            default:
+                filePrefix = ((Component)networkTarget).gameObject.name;
+                break;
+        }
+
         string path = activeScene == null ? Application.dataPath : Application.dataPath + activeScene.path;
-        string savePath = EditorUtility.SaveFilePanel("Save Network ID Associations", path, $"{scenePrefix}network_ids", "json");
+        string savePath = EditorUtility.SaveFilePanel("Save Network ID Associations", path, $"{filePrefix}_network_ids", "json");
         if (string.IsNullOrWhiteSpace(savePath))
             return;
         
@@ -396,7 +443,7 @@ public class VRCNetworkIDUtility : EditorWindow
             if (!loadedRefs.Values.Any(objRef => objRef.gameObjectPath == path))
                 loadedRefs.Add(ID, new NetworkObjectRef {
                     ID = ID,
-                    gameObject = GameObject.Find(path),
+                    gameObject = networkTarget.FindNetworkIDGameObject(path),
                     gameObjectPath = path
                 });
             else
@@ -408,7 +455,7 @@ public class VRCNetworkIDUtility : EditorWindow
         DetectConflicts(loadedRefs, conflicts);
     }
 
-    static void DetectConflicts(Dictionary<int, NetworkObjectRef> loadedRefs, List<Conflict> conflictList)
+    void DetectConflicts(Dictionary<int, NetworkObjectRef> loadedRefs, List<Conflict> conflictList)
     {
         Dictionary<string, NetworkObjectRef> loadedPaths = new Dictionary<string, NetworkObjectRef>();
         foreach (var kvp in loadedRefs)
@@ -440,7 +487,7 @@ public class VRCNetworkIDUtility : EditorWindow
             }
         }
 
-        var sceneRefs = Descriptor.NetworkIDs.OrderBy(nid => nid.ID).ToDictionary(
+        var sceneRefs = networkTarget.NetworkIDCollection.OrderBy(nid => nid.ID).ToDictionary(
             nid => nid.ID,
             nid => new NetworkObjectRef {
                 ID = nid.ID,
@@ -542,27 +589,27 @@ public class VRCNetworkIDUtility : EditorWindow
                     using (new EditorGUI.DisabledScope(true))
                         EditorGUILayout.TextField(objRef.gameObjectPath);
 
-                    MonoBehaviour newTarget = EditorGUILayout.ObjectField(null, typeof(VRC.SDKBase.Network.VRCNetworkBehaviour), true) as MonoBehaviour;
-                    if (newTarget != null)
-                    {
-                        VRC.SDKBase.INetworkID nid = newTarget as VRC.SDKBase.INetworkID;
-    
+                    GameObject newTarget = EditorGUILayout.ObjectField(null, typeof(GameObject), true) as GameObject;
+                    if (newTarget?.GetComponent<INetworkID>() != null)
+                    {    
                         // Remove existing, add new
-
                         int id = objRef.ID;
                         string path = Path(newTarget.gameObject);
-                        
-                        RemoveFileRef(objRef);
-                        RemoveObjRef(objRef);
+                        if(!string.IsNullOrEmpty(path))
+                        {
+                            RemoveFileRef(objRef);
+                            RemoveObjRef(objRef);
 
-                        var newRef = new NetworkObjectRef {
-                            ID = id,
-                            gameObjectPath = path,
-                            gameObject = newTarget.gameObject
-                        };
+                            var newRef = new NetworkObjectRef
+                            {
+                                ID = id,
+                                gameObjectPath = path,
+                                gameObject = newTarget.gameObject
+                            };
 
-                        fileRefs.Add(id, newRef);
-                        DetectConflicts(new Dictionary<int, NetworkObjectRef>{ { id, newRef }}, conflicts);
+                            fileRefs.Add(id, newRef);
+                            DetectConflicts(new Dictionary<int, NetworkObjectRef> { { id, newRef } }, conflicts);
+                        }
                     }
                     
                     switch (conflict.Type)
@@ -620,7 +667,7 @@ public class VRCNetworkIDUtility : EditorWindow
         var desired = objRef.gameObject;
         var path = objRef.gameObjectPath;
 
-        Descriptor.NetworkIDs = Descriptor.NetworkIDs
+        networkTarget.NetworkIDCollection = networkTarget.NetworkIDCollection
             .Where(pair => pair.ID != ID && pair.gameObject != desired)
             .Append(new VRC.SDKBase.Network.NetworkIDPair {
                 ID = ID,
@@ -652,11 +699,35 @@ public class VRCNetworkIDUtility : EditorWindow
         conflicts.RemoveAll(conflict => conflict.SceneRefs.Count == 0 && conflict.LoadedRefs.Count == 0);
     }
 
-    static string Path(GameObject gameObject)
+    string Path(GameObject gameObject)
     {
         return gameObject == null 
             ? null 
-            : VRC.SDKBase.Network.NetworkIDAssignment.Path(gameObject.transform);
+            : networkTarget.GetNetworkIDGameObjectPath(gameObject);
+    }
+
+    void SetTarget(INetworkIDContainer target)
+    {
+        networkTarget = target;
+        conflicts.Clear();
+        fileRefs.Clear();
+    }
+    void FindNetworkTargets()
+    {
+        //Find
+        networkTargets.Clear();
+        var activeScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
+        foreach(var obj in activeScene.GetRootGameObjects())
+        {
+            //networkTargets.AddRange(obj.GetComponentsInChildren<INetworkIDContainer>(true));
+            networkTargets.AddRange(obj.GetComponentsInChildren<VRC_SceneDescriptor>(true)); //TEMPORARY CHANGE
+        }
+            
+
+        //Names
+        networkTargetNames = new string[networkTargets.Count];
+        for(int i=0; i<networkTargets.Count; i++)
+            networkTargetNames[i] = ((Component)networkTargets[i]).gameObject.name;
     }
 }
 #endif
